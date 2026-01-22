@@ -51,8 +51,9 @@ Para ver los logs en tiempo real:
 docker compose logs -f
 ```
 
+
+### 📂 Estructura del Proyecto
 ```bash
-📂 Estructura del Proyecto
 ├── public/          # Archivos estáticos (Frontend, CSS, JS)
 │   └── uploads/     # Imágenes de productos (Persistente)
 ├── src/             # (Opcional) Código fuente adicional
