@@ -56,7 +56,7 @@ docker compose logs -f
 ```bash
 ├── public/          # Archivos estáticos (Frontend, CSS, JS)
 │   └── uploads/     # Imágenes de productos (Persistente)
-├── src/             # (Opcional) Código fuente adicional
+├── emailTemplate.js # Formato y contenido de emails
 ├── Dockerfile       # Configuración de la imagen de Node
 ├── docker-compose.yml # Orquestación de servicios
 ├── server.js        # Punto de entrada del servidor
