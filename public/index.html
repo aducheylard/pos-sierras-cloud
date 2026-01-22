@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sierras POS</title>
+    <link id="app-favicon" rel="icon" type="image/png" href="">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        .login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: #2c3e50; }
+        .sidebar { height: 100vh; position: fixed; top: 0; left: 0; background: #212529; color: white; z-index: 1050; width: 250px; overflow-x: hidden; white-space: nowrap; transition: width 0.2s ease-in-out; }
+        .sidebar.collapsed { width: 80px; }
+        .sidebar.collapsed .nav-text, .sidebar.collapsed .sidebar-header-text { display: none; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
+        .sidebar.collapsed .bi { margin-right: 0 !important; font-size: 1.5rem; }
+        .main-content { padding: 20px; min-height: 100vh; margin-left: 250px; transition: margin-left 0.2s ease-in-out; }
+        .main-content.expanded { margin-left: 80px; }
+        @media (max-width: 991.98px) {
+            .sidebar { transform: translateX(-100%); width: 250px; transition: transform 0.3s; }
+            .sidebar.active { transform: translateX(0); }
+            .sidebar.collapsed { width: 250px; } 
+            .main-content { margin-left: 0 !important; padding-top: 60px; }
+            .overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1040; }
+            .overlay.active { display: block; }
+            .mobile-header { display: flex; }
+            .toggle-desktop-btn { display: none; }
+        }
+        @media (min-width: 992px) { .mobile-header { display: none; } }
+        .mobile-header { position: fixed; top: 0; left: 0; width: 100%; height: 50px; background: #212529; color: white; z-index: 1030; align-items: center; padding: 0 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .nav-link { color: rgba(255,255,255,.75); cursor: pointer; padding: 12px 20px; display: flex; align-items: center; }
+        .nav-link i { margin-right: 10px; font-size: 1.2rem; }
+        .nav-link:hover, .nav-link.active { color: white; background: rgba(255,255,255,.1); border-left: 4px solid #0d6efd; }
+        .card-prod { cursor: pointer; transition: 0.2s; border: none; }
+        .card-prod:active { transform: scale(0.95); }
+        .disabled-prod { opacity: 0.6; filter: grayscale(1); pointer-events: none; cursor: not-allowed; }
+        .category-tag { font-size: 0.8rem; font-weight: bold; color: white !important; margin-bottom: 3px; display: inline-block; margin-right: 4px; padding: 3px 8px; border-radius: 4px; }
+        .custom-dropdown { position: relative; }
+        .dropdown-list { position: absolute; top: 100%; left: 0; width: 100%; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #ced4da; z-index: 100; border-radius: 0 0 5px 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .dropdown-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; }
+        .dropdown-item:hover { background: #f8f9fa; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; padding: 5px; border: 1px solid #ced4da; border-radius: 0.375rem; background: white; min-height: 38px; }
+        .tag-badge { background-color: #0d6efd; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; display: flex; align-items: center; }
+        .tag-remove { margin-left: 5px; cursor: pointer; opacity: 0.7; }
+        .tag-input { border: none; outline: none; flex-grow: 1; min-width: 100px; padding: 2px 5px; }
+        .suggestions-list { position: absolute; background: white; border: 1px solid #ddd; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1000; list-style: none; padding: 0; margin-top: 2px; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 8px 12px; cursor: pointer; }
+        .suggestion-item:hover { background-color: #f8f9fa; color: #0d6efd; }
+        .reembolsado { text-decoration: line-through; opacity: 0.6; background-color: #ffebee !important; }
+        .filter-label { font-size: 0.75rem; color: #6c757d; margin-bottom: 2px; display: block; }
+    </style>
+</head>
+<body x-data="appData()" x-init="initApp()">
+
+    <div x-show="!token" class="login-screen">
+        <div class="card p-4 shadow-lg border-0" style="width: 350px;">
+            <div class="text-center mb-4"><h1>🏔️</h1><h3>Sierras POS</h3></div>
+            <div class="mb-3"><input type="text" class="form-control" x-model="loginForm.username" placeholder="Usuario"></div>
+            <div class="mb-4"><input type="password" class="form-control" x-model="loginForm.password" @keyup.enter="login()" placeholder="Contraseña"></div>
+            <button class="btn btn-primary w-100" @click="login()" :disabled="cargando">Ingresar</button>
+            <p x-show="loginError" class="text-danger text-center mt-3 small">Credenciales incorrectas</p>
+        </div>
+    </div>
+
+    <div x-show="token" style="display: none;">
+        <div class="overlay" :class="{ 'active': mobileMenuOpen }" @click="mobileMenuOpen = false"></div>
+        <div class="mobile-header d-lg-none"><button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen"><i class="bi bi-list"></i></button><h5 class="m-0 fw-bold">🏔️ Sierras</h5></div>
+
+        <div class="sidebar d-flex flex-column" :class="{ 'collapsed': sidebarCollapsed, 'active': mobileMenuOpen }">
+            <div class="p-3 d-flex align-items-center justify-content-between border-bottom border-secondary" style="height: 70px;">
+                <div class="sidebar-header-text overflow-hidden d-flex align-items-center"><img x-show="config.app_logo" :src="config.app_logo" style="height:30px; margin-right:10px;"><div><h5 class="m-0 fw-bold">🏔️ Sierras</h5><small class="text-white-50" x-text="currentUser.nombre"></small></div></div>
+                <button class="btn btn-sm text-white toggle-desktop-btn" @click="sidebarCollapsed = !sidebarCollapsed"><i class="bi" :class="sidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i></button>
+            </div>
+            <ul class="nav flex-column mt-2">
+                <template x-for="menuId in menuOrder" :key="menuId">
+                    <li class="nav-item" :title="menuItems[menuId].label" x-show="!menuItems[menuId].adminOnly || currentUser.role === 'admin'">
+                        <a class="nav-link" :class="{ 'active': view === menuId }" @click="navigate(menuId)"><i class="bi" :class="menuItems[menuId].icon"></i> <span class="nav-text" x-text="menuItems[menuId].label"></span></a>
+                    </li>
+                </template>
+            </ul>
+            <div class="mt-auto p-3 border-top border-secondary"><button class="btn btn-outline-light w-100 btn-sm" @click="logout()"><i class="bi bi-box-arrow-left"></i> <span class="nav-text">Salir</span></button></div>
+        </div>
+
+        <div class="main-content" :class="{ 'expanded': sidebarCollapsed }">
+            
+            <div x-show="view === 'pos'">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-8 order-2 order-lg-1">
+                        <input type="text" class="form-control form-control-lg mb-3" placeholder="🔍 Buscar..." x-model="searchProd">
+                        <div class="row g-2">
+                            <template x-for="p in productosFiltrados.filter(x => x.activo)" :key="p.id">
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="card card-prod h-100 shadow-sm" :class="{'disabled-prod': (p.stock || 0) <= 0}" @click="(p.stock||0) > 0 && agregarAlCarro(p)">
+                                        <div class="card-body text-center p-2 d-flex flex-column justify-content-center">
+                                            <div class="mb-2 bg-white rounded d-flex align-items-center justify-content-center position-relative border" style="height:120px; overflow:hidden;">
+                                                <span x-show="!p.foto" class="text-muted fs-1">📦</span>
+                                                <img x-show="p.foto" :src="p.foto" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'; this.previousElementSibling.style.display='inline'">
+                                            </div>
+                                            <div class="mb-1" style="min-height: 24px;"><template x-for="cat in (p.categoria || '').split(',').filter(Boolean)"><span class="badge bg-dark category-tag" x-text="cat"></span></template></div>
+                                            <h6 class="fw-bold m-0 text-truncate" x-text="p.nombre"></h6>
+                                            <div class="fw-bold" :class="(p.stock||0) > 0 ? 'text-primary' : 'text-danger'" x-text="(p.stock||0) > 0 ? '$' + p.precio : 'Sin Stock'"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-4 order-1 order-lg-2">
+                        <div class="card shadow border-0" style="position: sticky; top: 20px;">
+                            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center"><span class="fw-bold fs-5">🛒 Carrito</span><div><span class="badge bg-white text-primary me-2" x-text="carrito.length"></span><button class="btn btn-sm btn-outline-light" @click="vaciarCarro()" title="Limpiar"><i class="bi bi-trash"></i></button></div></div>
+                            <div class="card-body p-2">
+                                <div class="mb-2 custom-dropdown" @click.outside="showFamList = false">
+                                    <label class="form-label small text-muted mb-0">Cliente / Familia</label>
+                                    <div class="input-group"><input type="text" class="form-control" :class="ventaActual.familiaId ? 'border-success bg-success-subtle text-success fw-bold' : 'border-danger'" placeholder="Seleccione..." x-model="searchFamInput" @click="showFamList = true; searchFamInput = ''" @input="showFamList = true; validarFamilia()"><span class="input-group-text bg-white" x-show="ventaActual.familiaId"><i class="bi bi-check-circle-fill text-success"></i></span></div>
+                                    <div class="dropdown-list" x-show="showFamList"><template x-for="f in familiasFiltradas" :key="f.id"><div class="dropdown-item d-flex justify-content-between" @click="seleccionarFamilia(f)"><span x-text="f.nombre"></span><span class="badge bg-secondary" x-text="'ID ' + f.id"></span></div></template></div>
+                                </div>
+                                <div class="bg-light border rounded p-2 mb-3" style="max-height: 300px; overflow-y: auto;">
+                                    <template x-for="(item, i) in carrito" :key="i"><div class="d-flex justify-content-between align-items-center border-bottom py-2 bg-white px-2 mb-1 rounded"><div style="width: 50%;"><div class="fw-bold text-truncate" x-text="item.nombre"></div><small class="text-muted" x-text="'$' + item.precio + ' c/u'"></small></div><div class="d-flex align-items-center gap-1"><input type="number" class="form-control form-control-sm text-center p-1" style="width: 60px;" x-model.number="item.cantidad" min="1"><span class="fw-bold" style="min-width: 50px; text-align: right;" x-text="'$' + (item.precio * item.cantidad)"></span><button class="btn btn-sm btn-outline-danger py-0" @click="carrito.splice(i,1)">x</button></div></div></template>
+                                    <div x-show="carrito.length===0" class="text-center text-muted py-4"><i class="bi bi-cart-x display-6"></i><br>Vacío</div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-end mb-3"><span class="text-muted fs-5">Total</span><span class="display-5 fw-bold text-dark" x-text="'$' + totalCarrito"></span></div>
+                                <div class="d-grid gap-2"><button class="btn btn-success btn-lg fw-bold py-3" @click="ventaActual.metodo='Efectivo'; procesarVenta()">💵 Efectivo</button><button class="btn btn-primary btn-lg fw-bold py-3" @click="ventaActual.metodo='Cuenta'; procesarVenta()">📓 Cuenta Familiar</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div x-show="view === 'ventas'">
+                <h3>Historial de Ventas</h3>
+                <div class="card p-3 mb-3 border-0 shadow-sm">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2"><span class="filter-label">Desde</span><input type="date" class="form-control" x-model="filters.startDate"></div>
+                        <div class="col-md-2"><span class="filter-label">Hasta</span><input type="date" class="form-control" x-model="filters.endDate"></div>
+                        <div class="col-md-3"><span class="filter-label">Buscar</span><input type="text" class="form-control" placeholder="Nombre..." x-model="filters.search"></div>
+                        <div class="col-md-2"><span class="filter-label">Método</span><select class="form-select" x-model="filters.metodo"><option value="">Todos</option><option value="Efectivo">Efectivo</option><option value="Cuenta">Cuenta</option><option value="reembolsado">Anulado</option></select></div>
+                        <div class="col-md-3"><span class="filter-label">Vendedor</span><select class="form-select" x-model="filters.vendedor"><option value="">Todos</option><template x-for="v in uniqueVendedores" :key="v"><option :value="v" x-text="v"></option></template></select></div>
+                    </div>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th> <th>Fecha</th>
+                                <th>Vendedor</th>
+                                <th>Familia</th>
+                                <th>Total</th>
+                                <th>Saldo</th>
+                                <th>Método</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="v in ventasFiltradas" :key="v.id">
+                                <tr :class="{'reembolsado': v.status === 'reembolsado'}">
+                                    <td>
+                                        <span class="badge bg-secondary" x-text="v.id"></span>
+                                    </td>
+                                    
+                                    <td class="small text-muted" x-text="new Date(v.fecha).toLocaleString()"></td>
+                                    <td x-text="v.vendedor"></td>
+                                    <td>
+                                        <div class="fw-bold" x-text="v.familia_nombre"></div>
+                                        <div class="small text-muted" x-text="'ID: ' + (v.familia_id || '-')"></div>
+                                    </td>
+                                    <td class="fw-bold" x-text="'$' + v.total"></td>
+                                    <td :class="{'text-danger': (v.saldo_historico||0)>0, 'text-success': (v.saldo_historico||0)<0}">
+                                        <span x-text="'$' + (v.saldo_historico || 0)"></span>
+                                    </td>
+                                    <td>
+                                        <span class="badge" :class="v.status === 'reembolsado' ? 'bg-danger' : (v.metodo_pago === 'Efectivo' ? 'bg-success' : 'bg-primary')" x-text="v.status === 'reembolsado' ? 'Anulado' : v.metodo_pago"></span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary me-1" @click="reenviarBoleta(v)" title="Reenviar correo"><i class="bi bi-envelope"></i></button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="reembolsarVenta(v)" :disabled="currentUser.role !== 'admin' || v.status === 'reembolsado'" title="Anular"><i class="bi bi-x-circle"></i></button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div x-show="view === 'stats'">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 bg-white p-3 rounded shadow-sm">
+                    <div><h3 class="m-0 fw-bold text-primary"><i class="bi bi-graph-up-arrow"></i> Dashboard</h3><small class="text-muted">Estadísticas completas</small></div>
+                    <div class="d-flex gap-2 align-items-end">
+                        <div><label class="small fw-bold">Desde</label><input type="date" class="form-control" x-model="statsFilters.startDate"></div>
+                        <div><label class="small fw-bold">Hasta</label><input type="date" class="form-control" x-model="statsFilters.endDate"></div>
+                        <button class="btn btn-primary" @click="loadStatsView()"><i class="bi bi-arrow-clockwise"></i></button>
+                        <button class="btn btn-success" @click="downloadExcel()"><i class="bi bi-file-excel"></i></button>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ventas</small><h4 class="my-1" x-text="stats.totalVentas || 0"></h4></div></div>
+                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ingresos</small><h4 class="my-1 text-success" x-text="'$' + (stats.ingresosTotales/1000).toFixed(0) + 'k'"></h4></div></div>
+                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Items</small><h4 class="my-1 text-warning" x-text="stats.itemsVendidos || 0"></h4></div></div>
+                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Deuda Hist.</small><h4 class="my-1 text-danger" x-text="'$' + (stats.deudaTotal/1000).toFixed(0) + 'k'"></h4></div></div>
+                    
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100 bg-warning-subtle">
+                            <small class="text-dark fw-bold">Mejor Día ($)</small>
+                            <div class="lh-1 mt-1"><small x-text="bestDayMoney.date"></small><div class="fw-bold" x-text="'$' + (bestDayMoney.total || 0).toLocaleString('es-CL')"></div></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100 bg-info-subtle">
+                            <small class="text-dark fw-bold">Mejor Día (#)</small>
+                            <div class="lh-1 mt-1">
+                                <small x-text="bestDayTx.date"></small>
+                                <div class="fw-bold" x-text="(bestDayTx.count || 0) + ' ventas'"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white d-flex justify-content-between">
+                                <h6 class="m-0 fw-bold">📈 Evolución de Ventas</h6>
+                                <select class="form-select form-select-sm w-auto" x-model="chartConfig.evolutionMetric" @change="renderCharts()"><option value="total">Dinero ($)</option><option value="tx">Transacciones (#)</option></select>
+                            </div>
+                            <div class="card-body"><canvas id="chartEvolution" style="max-height: 300px;"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">💳 Métodos de Pago</h6></div>
+                            <div class="card-body d-flex align-items-center justify-content-center"><div style="width: 200px;"><canvas id="chartMethods"></canvas></div></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 fw-bold">🏆 Top Productos</h6>
+                                <div class="d-flex gap-1">
+                                    <select class="form-select form-select-sm" x-model="chartConfig.topProdMetric" @change="renderCharts()"><option value="cantidad">Por Cantidad</option><option value="total">Por Dinero</option></select>
+                                </div>
+                            </div>
+                            <div class="card-body"><canvas id="chartTopProd"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">👨‍👩‍👧‍👦 Top 5 Familias (Mayor Gasto)</h6></div>
+                            <div class="card-body"><canvas id="chartFamilies"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">⏰ Horarios Punta</h6></div>
+                            <div class="card-body"><canvas id="chartHours"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">📂 Categorías ($)</h6></div>
+                            <div class="card-body d-flex justify-content-center"><canvas id="chartCats"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">👤 Vendedores</h6></div>
+                            <div class="card-body d-flex justify-content-center"><canvas id="chartSeller"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div x-show="view === 'config'">
+                <h3>Configuración</h3>
+                <div class="row">
+                    <div class="col-md-6"><div class="card p-4 shadow-sm border-0 mb-3"><h5>Personalización</h5><div class="mb-3"><label>Logo</label><input type="file" class="form-control" @change="uploadConfig('app_logo', $event)"><small class="text-muted" x-text="config.app_logo ? 'Cargado' : 'Sin logo'"></small></div><div class="mb-3"><label>Favicon</label><input type="file" class="form-control" @change="uploadConfig('app_favicon', $event)"><small class="text-muted" x-text="config.app_favicon ? 'Cargado' : 'Sin favicon'"></small></div></div></div>
+                    <div class="col-md-6"><div class="card p-4 shadow-sm border-0 mb-3"><h5>Menú</h5><ul class="list-group"><template x-for="(id, index) in menuOrder" :key="id"><li class="list-group-item d-flex justify-content-between align-items-center"><span><i class="bi me-2" :class="menuItems[id].icon"></i> <span x-text="menuItems[id].label"></span></span><div><button class="btn btn-sm btn-light" @click="moveMenu(index, -1)" :disabled="index===0">⬆️</button><button class="btn btn-sm btn-light" @click="moveMenu(index, 1)" :disabled="index===menuOrder.length-1">⬇️</button></div></li></template></ul></div><div class="card p-4 shadow-sm border-danger"><h5 class="text-danger">Zona de Peligro</h5><button class="btn btn-danger w-100 fw-bold" @click="resetDatabase()">⚠️ BORRAR BASE DE DATOS</button></div></div>
+                </div>
+            </div>
+
+            <div x-show="view === 'usuarios'">
+                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Usuarios</h3><button class="btn btn-primary" @click="toggleFormUsuario()"><i class="bi" :class="showFormUser ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormUser ? 'Cerrar' : 'Nuevo'"></span></button></div>
+                <div x-show="showFormUser" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><label>Usuario</label><input type="text" class="form-control" x-model="formUser.username"></div><div class="col-md-4"><label>Email</label><input type="email" class="form-control" x-model="formUser.email"></div><div class="col-md-4"><label>Nombre</label><input type="text" class="form-control" x-model="formUser.nombre"></div><div class="col-md-4"><label>Clave</label><input type="password" class="form-control" x-model="formUser.password"></div><div class="col-md-4"><label>Rol</label><select class="form-select" x-model="formUser.role"><option value="vendedor">Vendedor</option><option value="admin">Admin</option></select></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarUsuario()">Guardar</button></div></div></div>
+                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>User</th><th>Nombre</th><th>Email</th><th>Rol</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="u in usuarios" :key="u.id"><tr><td x-text="u.username"></td><td x-text="u.nombre"></td><td x-text="u.email"></td><td><span class="badge" :class="u.role==='admin'?'bg-danger':'bg-success'" x-text="u.role"></span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicionUsuario(u)" :disabled="u.username==='admin'&&currentUser.nombre!=='admin'">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('usuarios', u.id)" :disabled="u.username==='admin'">X</button></td></tr></template></tbody></table></div>
+            </div>
+            <div x-show="view === 'familias'">
+                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Familias</h3><button class="btn btn-primary" @click="toggleFormFamilia()"><i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span></button></div>
+                <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><input type="text" class="form-control" placeholder="Nombre" x-model="formFamilia.nombre"></div><div class="col-md-4"><input type="email" class="form-control" placeholder="Email" x-model="formFamilia.email"></div><div class="col-md-4"><input type="text" class="form-control" placeholder="Teléfono" x-model="formFamilia.telefono"></div><div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'"><input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda"></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarFamilia()">Guardar</button></div></div></div>
+                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>ID</th><th>Familia</th><th>Contacto</th><th>Deuda</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="f in familias" :key="f.id"><tr><td><span class="badge bg-secondary" x-text="f.id"></span></td><td x-text="f.nombre"></td><td><div x-text="f.email" class="small text-muted"></div><div x-text="f.telefono" class="small text-primary"></div></td><td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$'+f.deuda"></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)">X</button></td></tr></template></tbody></table></div>
+            </div>
+            <div x-show="view === 'productos'">
+                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Productos</h3><button class="btn btn-primary" @click="toggleFormProducto()"><i class="bi" :class="showFormProd ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormProd ? 'Cerrar' : 'Nuevo'"></span></button></div>
+                
+                <div x-show="showFormProd" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" placeholder="Nombre" x-model="formProd.nombre">
+                        </div>
+                        
+                        <div class="col-md-4 position-relative" @click.outside="catListOpen = false">
+                            <div class="tag-container" @click="$refs.catInput.focus(); catListOpen = true" style="cursor: text; background: white;">
+                                <template x-for="(cat, i) in formProd.categorias">
+                                    <span class="tag-badge">
+                                        <span x-text="cat"></span>
+                                        <span class="tag-remove" @click.stop="removerCategoria(i)">&times;</span>
+                                    </span>
+                                </template>
+                                <input x-ref="catInput" 
+                                    type="text" 
+                                    class="tag-input" 
+                                    placeholder="Categoría (+Enter)" 
+                                    x-model="catInput" 
+                                    @focus="catListOpen = true"
+                                    @input="catListOpen = true"
+                                    @keydown.enter.prevent="agregarCategoria(catInput)" 
+                                    @keydown.backspace="if(!catInput) removerCategoria(formProd.categorias.length-1)">
+                            </div>
+
+                            <ul class="suggestions-list" x-show="catListOpen" style="display:none;">
+                                <li class="suggestion-item text-primary fw-bold" 
+                                    x-show="catInput && !uniqueCategories.map(c=>c.toLowerCase()).includes(catInput.toLowerCase())"
+                                    @mousedown.prevent="agregarCategoria(catInput)">
+                                    <i class="bi bi-plus-circle"></i> Crear "<span x-text="catInput"></span>"
+                                </li>
+                                <template x-for="s in uniqueCategories.filter(c => !catInput || c.toLowerCase().includes(catInput.toLowerCase()))">
+                                    <li class="suggestion-item" 
+                                        x-show="!formProd.categorias || !formProd.categorias.includes(s)"
+                                        @mousedown.prevent="agregarCategoria(s)">
+                                        <span x-text="s"></span>
+                                    </li>
+                                </template>
+                                <li class="p-2 text-muted small" x-show="uniqueCategories.length === 0 && !catInput">
+                                    Escribe para crear una nueva
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-4 d-flex align-items-center gap-2">
+                            <img x-show="formProd.foto" :src="formProd.foto" style="height:38px;">
+                            <input type="file" id="fileInput" class="form-control" @change="handleFileUpload($event)">
+                        </div>
+                        
+                        <div class="col-6 col-md-3">
+                            <input type="number" class="form-control" placeholder="Precio" x-model="formProd.precio">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <input type="number" class="form-control" placeholder="Stock" x-model="formProd.stock">
+                        </div>
+                        
+                        <div class="col-12 mt-3 text-end">
+                            <button class="btn btn-secondary" @click="toggleFormProducto()">Cancelar</button> 
+                            <button class="btn btn-success" @click="guardarProducto()">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th width="60">Foto</th><th>Nombre</th><th>Categorías</th><th>Precio</th><th>Stock</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="p in productos" :key="p.id"><tr :class="{'table-secondary text-muted':!p.activo}"><td><img x-show="p.foto" :src="p.foto" style="width:40px;height:40px;object-fit:contain;"></td><td x-text="p.nombre"></td><td><template x-for="c in (p.categoria||'').split(',').filter(Boolean)"><span class="badge bg-light text-dark border me-1" x-text="c"></span></template></td><td x-text="'$'+p.precio"></td><td x-text="p.stock"></td><td><div class="form-check form-switch"><input class="form-check-input" type="checkbox" :checked="p.activo" @change="cambiarEstadoProducto(p)"></div></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicion(p)">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('productos', p.id)">X</button></td></tr></template></tbody></table></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let charts = {};
+const today = new Date().toISOString().split('T')[0];
+
+function appData() {
+    return {
+        // --- VARIABLES DE ESTADO ---
+        token: localStorage.getItem('pos_token') || null,
+        currentUser: JSON.parse(localStorage.getItem('pos_user')) || {},
+        sidebarCollapsed: false, mobileMenuOpen: false, view: 'pos', 
+        loginForm: { username: '', password: '' }, loginError: false, cargando: false,
+        
+        // Datos
+        productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {},
+        
+        // Carrito y Filtros
+        ventaActual: { familiaId: '', metodo: 'Efectivo' },
+        filters: { search: '', metodo: '', startDate: '', endDate: '', vendedor: '', sort: 'desc' },
+        statsFilters: { startDate: today, endDate: today }, 
+        
+        // VARIABLES NUEVAS PARA CATEGORÍA (IMPORTANTE)
+        catListOpen: false, 
+        catInput: '', 
+
+        // Configuración
+        config: { menu_order: '[]', app_logo: '', app_favicon: '' },
+        menuOrder: ['pos', 'ventas', 'familias', 'productos', 'usuarios', 'stats', 'config'],
+        menuItems: { pos: { label: 'Vender', icon: 'bi-cart4', adminOnly: false }, ventas: { label: 'Historial', icon: 'bi-receipt', adminOnly: false }, familias: { label: 'Familias', icon: 'bi-people', adminOnly: false }, productos: { label: 'Productos', icon: 'bi-box-seam', adminOnly: true }, usuarios: { label: 'Usuarios', icon: 'bi-person-lock', adminOnly: true }, stats: { label: 'Estadísticas', icon: 'bi-graph-up', adminOnly: true }, config: { label: 'Configuración', icon: 'bi-gear', adminOnly: true } },
+
+        // UI Helpers
+        searchFamInput: '', showFamList: false, showFormUser: false, formUser: {}, showFormFamilia: false, formFamilia: {}, showFormProd: false, formProd: {}, fotoFile: null, searchProd: '', 
+
+        // --- COMPUTADOS (GETTERS) ---
+        get productosFiltrados() { if(!this.searchProd) return this.productos; const s=this.searchProd.toLowerCase(); return this.productos.filter(p=>p.nombre.toLowerCase().includes(s)||(p.categoria&&p.categoria.toLowerCase().includes(s))); },
+        get familiasFiltradas() { if(!this.searchFamInput) return this.familias.slice(0, 10); const s=this.searchFamInput.toLowerCase(); return this.familias.filter(f=>f.nombre.toLowerCase().includes(s)||f.id.toString().includes(s)).slice(0, 10); },
+        get uniqueVendedores() { return [...new Set(this.historialVentas.map(v => v.vendedor))]; },
+        get ventasFiltradas() {
+            let v = this.historialVentas;
+            if(this.filters.startDate) v = v.filter(x => x.fecha >= this.filters.startDate);
+            if(this.filters.endDate) v = v.filter(x => x.fecha.split('T')[0] <= this.filters.endDate);
+            if(this.filters.search) { const s=this.filters.search.toLowerCase(); v=v.filter(x=>x.familia_nombre.toLowerCase().includes(s)||x.vendedor.toLowerCase().includes(s)||(x.familia_id&&x.familia_id.toString().includes(s))); }
+            if(this.filters.metodo) { if(this.filters.metodo==='reembolsado')v=v.filter(x=>x.status==='reembolsado'); else v=v.filter(x=>x.metodo_pago===this.filters.metodo&&x.status!=='reembolsado'); }
+            if(this.filters.vendedor) v=v.filter(x=>x.vendedor===this.filters.vendedor);
+            return v.sort((a,b)=>this.filters.sort==='desc'?new Date(b.fecha)-new Date(a.fecha):new Date(a.fecha)-new Date(b.fecha));
+        },
+        get totalCarrito() { return this.carrito.reduce((s,i)=>s+(i.precio*i.cantidad),0); },
+        get uniqueCategories() { 
+            const t=new Set(); 
+            this.productos.forEach(p=>{
+                if(p.categoria) p.categoria.split(',').forEach(c=>{
+                    if(c && c.trim()) t.add(c.trim());
+                })
+            }); 
+            return Array.from(t).sort(); 
+        },
+
+        // --- INICIALIZACIÓN ---
+        async initApp() { if(this.token) { await this.cargarDatos(); await this.loadConfig(); } },
+        async loadConfig() { try { const r=await this.fetchAuth('/api/config'); const d=await r.json(); if(d.menu_order)this.menuOrder=JSON.parse(d.menu_order); this.config=d; this.updateFavicon(); } catch(e){} },
+        async saveConfig(k, v) { if(k==='menu_order')v=JSON.stringify(v); await this.fetchAuth('/api/config',{method:'POST',body:JSON.stringify({key:k,value:v})}); },
+        async uploadConfig(k, e) { const fd=new FormData(); fd.append('key',k); fd.append('file',e.target.files[0]); const r=await fetch('/api/config/upload',{method:'POST',headers:{'Authorization':this.token},body:fd}); if(r.ok){const d=await r.json();this.config[k]=d.url;if(k==='app_favicon')this.updateFavicon();} },
+        updateFavicon() { if(this.config.app_favicon) document.getElementById('app-favicon').href=this.config.app_favicon; },
+        moveMenu(i,d) { const n=[...this.menuOrder],t=n[i]; n[i]=n[i+d]; n[i+d]=t; this.menuOrder=n; this.saveConfig('menu_order',this.menuOrder); },
+        async resetDatabase() { if(confirm("¡PELIGRO!")) { await this.fetchAuth('/api/reset-database',{method:'POST'}); window.location.reload(); } },
+        navigate(id) { if(id==='ventas')this.cargarVentas(); if(id==='familias')this.cargarDatos(); if(id==='stats')this.loadStatsView(); if(id==='usuarios')this.cargarUsuarios(); this.view=id; this.mobileMenuOpen=false; },
+
+        // --- ESTADÍSTICAS ---
+        chartConfig: { 
+            evolutionMetric: 'total', // 'total' ($) o 'tx' (cantidad)
+            topProdMetric: 'cantidad', // 'cantidad' o 'total'
+        },
+        bestDayMoney: { date: '-', total: 0 }, 
+        bestDayTx: { date: '-', count: 0 },
+
+        async loadStatsView() {
+            const url = `/api/stats?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
+            this.stats = await (await this.fetchAuth(url)).json();
+            
+            // CÁLCULO DE DÍAS RÉCORD
+            this.bestDayMoney = { date: '-', total: 0 };
+            this.bestDayTx = { date: '-', count: 0 };
+
+            if (this.stats.charts && this.stats.charts.salesByDate) {
+                this.stats.charts.salesByDate.forEach(d => {
+                    if (d.total > this.bestDayMoney.total) this.bestDayMoney = { date: d.dia, total: d.total };
+                    if (d.tx > this.bestDayTx.count) this.bestDayTx = { date: d.dia, count: d.tx };
+                });
+            }
+
+            this.$nextTick(() => this.renderCharts());
+        },
+        renderCharts() {
+            // Limpiar lienzos previos
+            ['chartEvolution','chartMethods','chartTopProd','chartFamilies','chartHours','chartCats','chartSeller'].forEach(id=>{
+                if(charts[id]) charts[id].destroy();
+            });
+            
+            if(!this.stats.charts) return;
+            const d = this.stats.charts;
+
+            // 1. EVOLUCIÓN (LINEA - Filtrable)
+            charts['chartEvolution'] = new Chart(document.getElementById('chartEvolution'), {
+                type: 'line',
+                data: {
+                    labels: d.salesByDate.map(x => x.dia),
+                    datasets: [{
+                        label: this.chartConfig.evolutionMetric === 'total' ? 'Ventas ($)' : 'Transacciones (#)',
+                        data: d.salesByDate.map(x => this.chartConfig.evolutionMetric === 'total' ? x.total : x.tx),
+                        borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', fill: true, tension: 0.3
+                    }]
+                }, options: { maintainAspectRatio: false }
+            });
+
+            // 2. MÉTODOS PAGO (DONA)
+            charts['chartMethods'] = new Chart(document.getElementById('chartMethods'), {
+                type: 'doughnut',
+                data: {
+                    labels: d.salesByMethod.map(x => x.metodo_pago),
+                    datasets: [{ data: d.salesByMethod.map(x => x.total), backgroundColor: ['#198754', '#ffc107', '#0dcaf0'] }]
+                }
+            });
+
+            // 3. TOP PRODUCTOS (BARRAS - Filtrable)
+            const topData = d.topProducts.slice(0, 10); // O el límite que tengas configurado
+            charts['chartTopProd'] = new Chart(document.getElementById('chartTopProd'), {
+                type: 'bar',
+                data: {
+                    labels: topData.map(x => x.nombre),
+                    datasets: [{
+                        label: this.chartConfig.topProdMetric === 'cantidad' ? 'Unidades' : 'Dinero ($)',
+                        data: topData.map(x => x[this.chartConfig.topProdMetric]),
+                        backgroundColor: this.chartConfig.topProdMetric === 'cantidad' ? '#fd7e14' : '#20c997',
+                    }]
+                }, 
+                options: { 
+                    indexAxis: 'y', 
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            ticks: {
+                                autoSkip: false, // <--- ESTA ES LA SOLUCIÓN
+                                maxRotation: 0,
+                                minRotation: 0
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 4. TOP FAMILIAS (BARRAS - NUEVO)
+            const topFam = d.salesByFamily.slice(0, 5);
+            charts['chartFamilies'] = new Chart(document.getElementById('chartFamilies'), {
+                type: 'bar',
+                data: {
+                    labels: topFam.map(x => x.nombre),
+                    datasets: [{
+                        label: 'Total Gastado ($)',
+                        data: topFam.map(x => x.total),
+                        backgroundColor: '#6f42c1'
+                    }]
+                }, options: { maintainAspectRatio: false }
+            });
+
+            // 5. HORAS PUNTA (BARRAS VERTICALES)
+            charts['chartHours'] = new Chart(document.getElementById('chartHours'), {
+                type: 'bar',
+                data: {
+                    labels: d.salesByHour.map(x => x.hora + ':00'),
+                    datasets: [{ label: 'Ventas (#)', data: d.salesByHour.map(x => x.count), backgroundColor: '#6610f2' }]
+                }, options: { maintainAspectRatio: false }
+            });
+
+            // 6. CATEGORÍAS (PIE)
+            charts['chartCats'] = new Chart(document.getElementById('chartCats'), {
+                type: 'pie',
+                data: {
+                    labels: d.topCategories.map(x => x.nombre),
+                    datasets: [{ data: d.topCategories.map(x => x.total), backgroundColor: ['#0d6efd','#dc3545','#ffc107','#198754','#6610f2'] }]
+                }
+            });
+
+            // 7. VENDEDORES (DOUGHNUT)
+            charts['chartSeller'] = new Chart(document.getElementById('chartSeller'), {
+                type: 'doughnut',
+                data: {
+                    labels: d.salesBySeller.map(x => x.vendedor),
+                    datasets: [{ data: d.salesBySeller.map(x => x.total), backgroundColor: ['#0dcaf0', '#adb5bd', '#20c997'] }]
+                }
+            });
+        },
+        downloadExcel() {
+            const url = `/api/export-csv?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
+            window.open(url, '_blank');
+        },
+
+        // --- CARRITO ---
+        agregarAlCarro(p) { let i=this.carrito.find(x=>x.id===p.id); if(i)i.cantidad++; else this.carrito.push({...p,cantidad:1}); },
+        seleccionarFamilia(f) { this.ventaActual.familiaId=f.id; this.searchFamInput=f.nombre; this.showFamList=false; },
+        validarFamilia() { if(this.ventaActual.familiaId){const f=this.familias.find(x=>x.id===this.ventaActual.familiaId);if(!f||f.nombre!==this.searchFamInput)this.ventaActual.familiaId='';} },
+        vaciarCarro() { if(confirm("¿Vaciar?")){this.carrito=[];this.ventaActual.familiaId='';this.searchFamInput='';} },
+        async procesarVenta() {
+            if(!this.ventaActual.familiaId)return alert("Seleccione Familia");
+            if(!confirm("¿Confirmar?"))return;
+            const f=this.familias.find(x=>x.id==this.ventaActual.familiaId);
+            const d={vendedor:this.currentUser.nombre,familia:f,total:this.totalCarrito,metodo:this.ventaActual.metodo,carrito:this.carrito};
+            const r=await this.fetchAuth('/api/ventas',{method:'POST',body:JSON.stringify(d)});
+            if(r.ok){this.carrito=[];this.ventaActual.familiaId='';this.searchFamInput='';this.cargarDatos();}else alert("Error");
+        },
+        async reembolsarVenta(v){if(confirm("¿Anular?")){await this.fetchAuth(`/api/ventas/${v.id}/refund`,{method:'POST'});this.cargarVentas();}},
+        async reenviarBoleta(v){if(confirm("¿Reenviar?")){await this.fetchAuth(`/api/ventas/${v.id}/resend`,{method:'POST'});alert("Enviado");}},
+
+        // --- FORMULARIOS ---
+        toggleFormUsuario(){this.showFormUser=!this.showFormUser;if(!this.showFormUser)this.formUser={role:'vendedor'};},
+        prepararEdicionUsuario(u){this.formUser={...u,password:''};this.showFormUser=true;},
+        toggleFormFamilia(){this.showFormFamilia=!this.showFormFamilia;if(!this.showFormFamilia)this.formFamilia={deuda:0};},
+        prepararEdicionFamilia(f){this.formFamilia={...f};this.showFormFamilia=true;},
+
+        // --- [AQUÍ ESTÁ LA MAGIA QUE ARREGLA LAS CATEGORÍAS] ---
+        agregarCategoria(c){
+            if(!c) return;
+            const val = c.trim();
+            if(!val) return;
+
+            // ESTO ARREGLA EL BOTÓN GUARDAR: Inicializa el array si es null
+            if (!this.formProd.categorias) {
+                this.formProd.categorias = [];
+            }
+
+            // Evita duplicados y agrega
+            if(!this.formProd.categorias.includes(val)) {
+                this.formProd.categorias.push(val);
+                console.log("Categoría agregada:", val);
+            }
+
+            this.catInput = ''; 
+            this.catListOpen = false;
+        },
+        removerCategoria(i){ 
+            if(this.formProd.categorias) this.formProd.categorias.splice(i,1); 
+        },
+
+        toggleFormProducto(){this.showFormProd=!this.showFormProd;if(!this.showFormProd)this.resetFormProd();},
+        resetFormProd(){
+            // Inicializamos categorías como array vacío []
+            this.formProd={categorias:[],activo:1,foto:''};
+            this.fotoFile=null;
+            this.catInput='';
+            this.catListOpen=false;
+            document.getElementById('fileInput')?document.getElementById('fileInput').value='':null;
+        },
+        prepararEdicion(p){
+            const c=p.categoria?p.categoria.split(','):[];
+            this.formProd={...p,categorias:c};
+            this.showFormProd=true;
+            window.scrollTo(0,0);
+        },
+        handleFileUpload(e){this.fotoFile=e.target.files[0]},
+        
+        async guardarUsuario(){let u='/api/usuarios',m='POST';if(this.formUser.id){u+=`/${this.formUser.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formUser)}); this.toggleFormUsuario();this.cargarUsuarios();},
+        async guardarFamilia(){let u='/api/familias',m='POST';if(this.formFamilia.id){u+=`/${this.formFamilia.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formFamilia)}); this.toggleFormFamilia();this.cargarDatos();},
+        
+        async guardarProducto(){
+            const fd=new FormData(); 
+            fd.append('nombre',this.formProd.nombre); 
+            // Si categorias es undefined, enviamos string vacío
+            const catString = this.formProd.categorias ? this.formProd.categorias.join(',') : '';
+            fd.append('categoria', catString); 
+            fd.append('precio',this.formProd.precio); 
+            fd.append('stock',this.formProd.stock||0); 
+            fd.append('activo',this.formProd.activo?1:0); 
+            if(this.fotoFile)fd.append('foto',this.fotoFile);
+
+            let u='/api/productos',m='POST'; if(this.formProd.id){u+=`/${this.formProd.id}`;m='PUT'}
+            
+            await this.fetchAuth(u,{method:m,body:fd});
+            
+            // Recargar datos para ver cambios
+            this.searchProd = '';
+            this.productos = []; 
+            await this.cargarDatos(); 
+            this.toggleFormProducto();
+        },
+
+        async cambiarEstadoProducto(p){
+            const fd=new FormData(); fd.append('nombre',p.nombre); fd.append('categoria',p.categoria); fd.append('precio',p.precio); fd.append('stock',p.stock); fd.append('activo',p.activo?0:1);
+            await this.fetchAuth(`/api/productos/${p.id}`,{method:'PUT',body:fd}); this.cargarDatos();
+        },
+        async eliminar(t,id){if(confirm("¿Eliminar?")){await this.fetchAuth(`/api/${t}/${id}`,{method:'DELETE'});if(t==='usuarios')this.cargarUsuarios();else if(t==='ventas')this.cargarVentas();else this.cargarDatos();}},
+
+        // --- AUTH ---
+        async login(){const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.loginForm)});if(r.ok){const d=await r.json();this.token=d.token;this.currentUser={role:d.role,nombre:d.nombre};localStorage.setItem('pos_token',this.token);localStorage.setItem('pos_user',JSON.stringify(this.currentUser));this.initApp();}else this.loginError=true;},
+        logout(){fetch('/api/logout',{method:'POST',headers:{'Authorization':this.token}});this.token=null;localStorage.clear();},
+        async fetchAuth(u,o={}){if(!o.headers)o.headers={};o.headers['Authorization']=this.token;if(!o.body||!(o.body instanceof FormData))o.headers['Content-Type']='application/json';return fetch(u,o);},
+        async cargarDatos(){try{this.productos=await(await this.fetchAuth('/api/productos')).json();this.familias=await(await this.fetchAuth('/api/familias')).json();}catch(e){}},
+        async cargarUsuarios(){this.usuarios=await(await this.fetchAuth('/api/usuarios')).json();}, async cargarVentas(){this.historialVentas=await(await this.fetchAuth('/api/ventas')).json();}, async cargarStats(){this.stats=await(await this.fetchAuth('/api/stats')).json();}
+    }
+}
+</script>
+</body>
+</html>

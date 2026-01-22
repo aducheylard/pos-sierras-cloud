@@ -1,0 +1,27 @@
+# Dependencias de Node (pesan mucho y se instalan solas)
+node_modules/
+npm-debug.log
+
+# Base de datos (Binaria y cambia mucho, mejor backup manual)
+*.db
+*.sqlite
+
+# Archivos de entorno (CLAVES SECRETAS - ¡NO SUBIR!)
+.env
+
+# Logs
+logs/
+*.log
+
+# Python cache (para tu script DNS)
+__pycache__/
+*.pyc
+
+# Archivos de sistema
+.DS_Store
+
+# Certificados SSL (¡MUY IMPORTANTE!)
+acme.json
+letsencrypt/
+traefik/acme.json
+

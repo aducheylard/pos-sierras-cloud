@@ -1,0 +1,64 @@
+services:
+  traefik:
+    image: "traefik:latest"
+    container_name: "traefik"
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Redirección de HTTP a HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # Seguridad Cloudflare (Confiar en sus IPs)
+      - "--entrypoints.web.forwardedHeaders.insecure=true"
+      - "--entrypoints.websecure.forwardedHeaders.insecure=true"
+      # NOTA: Sin configuración de Let's Encrypt. Usamos el certificado default.
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    restart: always
+
+  # --- TU APP POS ---
+  app:
+    build: .
+    container_name: sierras_pos
+    restart: always
+    command: npm run dev
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Santiago
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASS=${ADMIN_PASS}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+    labels:
+      - "traefik.enable=true"
+      
+      # 1. Router HTTP (Redirige a HTTPS)
+      - "traefik.http.routers.app-http.rule=Host(`pos.ganimedes.cl`)"
+      - "traefik.http.routers.app-http.entrypoints=web"
+      - "traefik.http.routers.app-http.middlewares=https-redirect"
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+      
+      # 2. Router HTTPS (Seguro)
+      - "traefik.http.routers.app.rule=Host(`pos.ganimedes.cl`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      
+      # 3. Activar TLS (Sin especificar resolver, usa el default)
+      - "traefik.http.routers.app.tls=true"
+      
+      # 4. Definir Puerto Interno
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+    volumes:
+      - ./data/sierras_db.db:/app/sierras_db.db # Base de datos
+      - ./public:/app/public # Carpeta con los .html
+      - ./server.js:/app/server.js
+
