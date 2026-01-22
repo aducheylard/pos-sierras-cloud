@@ -65,7 +65,12 @@ try { db.prepare("SELECT saldo_historico FROM ventas LIMIT 1").get(); } catch (e
 try { db.prepare("SELECT status FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN status TEXT DEFAULT 'ok'");}catch(err){} }
 
 // Configuración por defecto
-const defaultConfig = { 'menu_order': JSON.stringify(['pos', 'ventas', 'familias', 'productos', 'usuarios', 'stats', 'config']), 'app_logo': '', 'app_favicon': '' };
+const defaultConfig = { 
+    'menu_order': JSON.stringify(['pos', 'ventas', 'familias', 'productos', 'usuarios', 'stats', 'config']), 
+    'app_logo': '', 
+    'app_favicon': '',
+    'mostrar_deuda_email': 'true' // <--- NUEVO: Por defecto sí la muestra
+};
 Object.keys(defaultConfig).forEach(k => { try { db.prepare('INSERT OR IGNORE INTO configuracion (key, value) VALUES (?, ?)').run(k, defaultConfig[k]); } catch(e){} });
 
 // 1. Leemos las credenciales del entorno
@@ -182,13 +187,18 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
 
         // ENVÍO DE BOLETA CON ID
         if(familia.email) {
+            // 1. Consultamos la configuración (Si no existe, asumimos 'true' por defecto)
+            const configDeuda = db.prepare("SELECT value FROM configuracion WHERE key = 'mostrar_deuda_email'").get();
+            const mostrarDeuda = configDeuda ? configDeuda.value === 'true' : true;
+
             const html = generarHtmlBoleta({ 
-                id: resultadoVenta.id, // <--- AQUI PASAMOS EL ID NUEVO
+                id: resultadoVenta.id,
                 fecha: new Date(), 
                 vendedor, 
                 total, 
                 metodo, 
-                nuevoSaldo: resultadoVenta.nuevoSaldo 
+                nuevoSaldo: resultadoVenta.nuevoSaldo,
+                mostrarDeuda: mostrarDeuda // <--- Pasamos la bandera a la plantilla
             }, carrito);
             
             enviarEmail(familia.email, `Boleta N°${resultadoVenta.id} - Sierras`, html);
@@ -202,13 +212,18 @@ app.post('/api/ventas/:id/resend', requireAuth, (req, res) => {
     const v = db.prepare('SELECT * FROM ventas WHERE id = ?').get(req.params.id);
     if(!v || !v.familia_email) return res.status(400).json({error: "Venta no válida"});
     
+    // 1. Consultamos la configuración
+    const configDeuda = db.prepare("SELECT value FROM configuracion WHERE key = 'mostrar_deuda_email'").get();
+    const mostrarDeuda = configDeuda ? configDeuda.value === 'true' : true;
+
     const html = generarHtmlBoleta({ 
-        id: v.id, // <--- Pasamos el ID existente
+        id: v.id, 
         fecha: v.fecha, 
         vendedor: v.vendedor, 
         total: v.total, 
         metodo: v.metodo_pago, 
-        nuevoSaldo: v.saldo_historico 
+        nuevoSaldo: v.saldo_historico,
+        mostrarDeuda: mostrarDeuda // <--- Pasamos la bandera
     }, JSON.parse(v.detalle_json));
 
     enviarEmail(v.familia_email, `Copia Boleta N°${v.id} - Sierras`, html)

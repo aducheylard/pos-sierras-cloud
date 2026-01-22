@@ -25,3 +25,5 @@ acme.json
 letsencrypt/
 traefik/acme.json
 
+.vscode/
+.vscode

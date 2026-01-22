@@ -281,8 +281,60 @@
             <div x-show="view === 'config'">
                 <h3>Configuración</h3>
                 <div class="row">
-                    <div class="col-md-6"><div class="card p-4 shadow-sm border-0 mb-3"><h5>Personalización</h5><div class="mb-3"><label>Logo</label><input type="file" class="form-control" @change="uploadConfig('app_logo', $event)"><small class="text-muted" x-text="config.app_logo ? 'Cargado' : 'Sin logo'"></small></div><div class="mb-3"><label>Favicon</label><input type="file" class="form-control" @change="uploadConfig('app_favicon', $event)"><small class="text-muted" x-text="config.app_favicon ? 'Cargado' : 'Sin favicon'"></small></div></div></div>
-                    <div class="col-md-6"><div class="card p-4 shadow-sm border-0 mb-3"><h5>Menú</h5><ul class="list-group"><template x-for="(id, index) in menuOrder" :key="id"><li class="list-group-item d-flex justify-content-between align-items-center"><span><i class="bi me-2" :class="menuItems[id].icon"></i> <span x-text="menuItems[id].label"></span></span><div><button class="btn btn-sm btn-light" @click="moveMenu(index, -1)" :disabled="index===0">⬆️</button><button class="btn btn-sm btn-light" @click="moveMenu(index, 1)" :disabled="index===menuOrder.length-1">⬇️</button></div></li></template></ul></div><div class="card p-4 shadow-sm border-danger"><h5 class="text-danger">Zona de Peligro</h5><button class="btn btn-danger w-100 fw-bold" @click="resetDatabase()">⚠️ BORRAR BASE DE DATOS</button></div></div>
+                    <div class="col-md-6">
+                        <div class="card p-4 shadow-sm border-0 mb-3">
+                            <h5>🎨 Personalización Visual</h5>
+                            <div class="mb-3">
+                                <label>Logo App</label>
+                                <input type="file" class="form-control" @change="uploadConfig('app_logo', $event)">
+                                <small class="text-muted" x-text="config.app_logo ? '✅ Cargado' : 'Sin logo'"></small>
+                            </div>
+                            <div class="mb-3">
+                                <label>Favicon</label>
+                                <input type="file" class="form-control" @change="uploadConfig('app_favicon', $event)">
+                                <small class="text-muted" x-text="config.app_favicon ? '✅ Cargado' : 'Sin favicon'"></small>
+                            </div>
+                        </div>
+
+                        <div class="card p-4 shadow-sm border-0 mb-3">
+                            <h5>📧 Preferencias de Correo</h5>
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" type="checkbox" id="checkDeuda" 
+                                    style="cursor: pointer; width: 3em; height: 1.5em;"
+                                    :checked="config.mostrar_deuda_email === 'true'"
+                                    @change="toggleConfigDeuda($event)">
+                                <label class="form-check-label ms-2 mt-1" for="checkDeuda" style="cursor: pointer;">
+                                    <strong>Mostrar Deuda Total</strong>
+                                    <small class="d-block text-muted">
+                                        Si se desactiva, el correo solo mostrará el monto de la compra actual, ocultando el saldo histórico acumulado.
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card p-4 shadow-sm border-0 mb-3">
+                            <h5>Organizar Menú</h5>
+                            <ul class="list-group">
+                                <template x-for="(id, index) in menuOrder" :key="id">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><i class="bi me-2" :class="menuItems[id].icon"></i> <span x-text="menuItems[id].label"></span></span>
+                                        <div>
+                                            <button class="btn btn-sm btn-light" @click="moveMenu(index, -1)" :disabled="index===0">⬆️</button>
+                                            <button class="btn btn-sm btn-light" @click="moveMenu(index, 1)" :disabled="index===menuOrder.length-1">⬇️</button>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                        
+                        <div class="card p-4 shadow-sm border-danger">
+                            <h5 class="text-danger">Zona de Peligro</h5>
+                            <p class="small text-muted">Esta acción borrará todas las ventas, productos y familias.</p>
+                            <button class="btn btn-danger w-100 fw-bold" @click="resetDatabase()">⚠️ BORRAR BASE DE DATOS</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -428,6 +480,26 @@ function appData() {
         async loadConfig() { try { const r=await this.fetchAuth('/api/config'); const d=await r.json(); if(d.menu_order)this.menuOrder=JSON.parse(d.menu_order); this.config=d; this.updateFavicon(); } catch(e){} },
         async saveConfig(k, v) { if(k==='menu_order')v=JSON.stringify(v); await this.fetchAuth('/api/config',{method:'POST',body:JSON.stringify({key:k,value:v})}); },
         async uploadConfig(k, e) { const fd=new FormData(); fd.append('key',k); fd.append('file',e.target.files[0]); const r=await fetch('/api/config/upload',{method:'POST',headers:{'Authorization':this.token},body:fd}); if(r.ok){const d=await r.json();this.config[k]=d.url;if(k==='app_favicon')this.updateFavicon();} },
+        async toggleConfigDeuda(e) {
+            const isChecked = e.target.checked;
+            const action = isChecked ? "MOSTRAR" : "OCULTAR";
+
+            // Ventana de confirmación
+            if (!confirm(`CONFIRMACIÓN:\n¿Estás seguro que deseas ${action} la deuda acumulada en los correos a clientes?`)) {
+                // Si el usuario cancela, revertimos el interruptor visualmente
+                e.target.checked = !isChecked;
+                return;
+            }
+
+            // Guardamos 'true' o 'false' como string en la base de datos
+            const val = isChecked ? 'true' : 'false';
+            
+            // Actualizamos localmente para que se refleje inmediato
+            this.config.mostrar_deuda_email = val;
+            
+            // Guardamos en el servidor
+            await this.saveConfig('mostrar_deuda_email', val);
+        },
         updateFavicon() { if(this.config.app_favicon) document.getElementById('app-favicon').href=this.config.app_favicon; },
         moveMenu(i,d) { const n=[...this.menuOrder],t=n[i]; n[i]=n[i+d]; n[i+d]=t; this.menuOrder=n; this.saveConfig('menu_order',this.menuOrder); },
         async resetDatabase() { if(confirm("¡PELIGRO!")) { await this.fetchAuth('/api/reset-database',{method:'POST'}); window.location.reload(); } },

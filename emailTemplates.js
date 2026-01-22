@@ -38,12 +38,17 @@ function generarHtmlBoleta(data, carrito) {
     let bloquePago = '';
     // Lógica para mostrar deuda o solo efectivo
     if (data.metodo === 'Cuenta') {
+        // Preparamos la línea de deuda, solo si mostrarDeuda es true
+        const lineaDeuda = data.mostrarDeuda 
+            ? `<hr style="border-top: 1px solid #ffeeba; margin: 10px 0;">
+               <p style="font-size: 1.2em; margin: 0;">📉 Deuda Total Acumulada: <strong>$${data.nuevoSaldo}</strong></p>`
+            : ''; // Si es false, esto queda vacío
+
         bloquePago = `
             <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; text-align: center; border: 1px solid #ffeeba;">
                 <h3 style="margin: 0 0 5px 0;">✅ Cargado a Cuenta Familiar</h3>
                 <p style="margin: 5px 0;">Total compra: <strong>$${data.total}</strong></p>
-                <hr style="border-top: 1px solid #ffeeba; margin: 10px 0;">
-                <p style="font-size: 1.2em; margin: 0;">📉 Deuda Total Acumulada: <strong>$${data.nuevoSaldo}</strong></p>
+                ${lineaDeuda}
             </div>`;
     } else {
         bloquePago = `
