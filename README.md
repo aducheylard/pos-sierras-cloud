@@ -27,6 +27,7 @@ Sistema de Punto de Venta (POS) ligero, contenerizado y diseñado para la nube. 
 git clone [https://github.com/aducheylard/pos-sierras-cloud.git](https://github.com/aducheylard/pos-sierras-cloud.git)
 cd pos-sierras-cloud
 
+```bash
 ### 2. Configurar Variables de Entorno
 Crea un archivo .env con la siguiente estructura:
 SMTP_HOST=smtp.gmail.com
