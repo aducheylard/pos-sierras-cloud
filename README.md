@@ -30,7 +30,7 @@ cd pos-sierras-cloud
 ```
 ### 2. Configurar Variables de Entorno
 ```
-Crea un archivo .env con la siguiente estructura:
+# Crea un archivo .env con la siguiente estructura:
 SMTP_HOST=smtp.gmail.com
 SMTP_USER=xxx@dominio.cl
 SMTP_PASS=xxxx xxxx xxxx xxxx
