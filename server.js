@@ -169,9 +169,7 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
             db.prepare('UPDATE familias SET deuda = ? WHERE id = ?').run(nuevoSaldo, familia.id);
         }
         
-        // MODIFICACION: Usamos .run() y guardamos el resultado en 'info'
-        const info = db.prepare("INSERT INTO ventas (vendedor, familia_nombre, familia_email, familia_id, saldo_historico, total, metodo_pago, detalle_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ok')")
-          .run(vendedor, familia.nombre, familia.email, familia.id, nuevoSaldo, total, metodo, JSON.stringify(carrito));
+        const info = db.prepare("INSERT INTO ventas (fecha, vendedor, familia_nombre, familia_email, familia_id, saldo_historico, total, metodo_pago, detalle_json, status) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, 'ok')").run(vendedor, familia.nombre, familia.email, familia.id, nuevoSaldo, total, metodo, JSON.stringify(carrito));
         
         const updateStock = db.prepare('UPDATE productos SET stock = stock - ? WHERE id = ?');
         carrito.forEach(i => updateStock.run(i.cantidad, i.id));
