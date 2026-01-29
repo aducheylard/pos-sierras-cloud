@@ -70,18 +70,48 @@
         <div class="mobile-header d-lg-none"><button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen"><i class="bi bi-list"></i></button><h5 class="m-0 fw-bold">🏔️ Sierras</h5></div>
 
         <div class="sidebar d-flex flex-column" :class="{ 'collapsed': sidebarCollapsed, 'active': mobileMenuOpen }">
+            
             <div class="p-3 d-flex align-items-center justify-content-between border-bottom border-secondary" style="height: 70px;">
-                <div class="sidebar-header-text overflow-hidden d-flex align-items-center"><img x-show="config.app_logo" :src="config.app_logo" style="height:30px; margin-right:10px;"><div><h5 class="m-0 fw-bold">🏔️ Sierras</h5><small class="text-white-50" x-text="currentUser.nombre"></small></div></div>
+                <div class="sidebar-header-text overflow-hidden d-flex align-items-center">
+                    <img x-show="config.app_logo" :src="config.app_logo" style="height:30px; margin-right:10px;">
+                    <div><h5 class="m-0 fw-bold">🏔️ Sierras</h5><small class="text-white-50" x-text="currentUser.nombre"></small></div>
+                </div>
                 <button class="btn btn-sm text-white toggle-desktop-btn" @click="sidebarCollapsed = !sidebarCollapsed"><i class="bi" :class="sidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i></button>
             </div>
+
+            <div x-show="!online" class="bg-danger text-white text-center fw-bold p-2 small border-bottom border-danger-subtle" x-transition>
+                <i class="bi bi-wifi-off"></i> SIN CONEXIÓN
+            </div>
+
+            <div x-show="ventasPendientes.length > 0" class="m-2 p-2 bg-warning text-dark rounded small" x-transition>
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <strong class="d-flex align-items-center gap-1"><i class="bi bi-cloud-slash-fill"></i> <span x-text="ventasPendientes.length"></span> pendientes</strong>
+                </div>
+                <div style="font-size: 0.75rem; line-height: 1.2;" class="mb-2">
+                    Se guardaron en el teléfono porque no había señal.
+                </div>
+                <button @click="intentarSincronizar()" class="btn btn-sm btn-dark w-100 py-0" :disabled="!online || sincronizando">
+                    <span x-show="sincronizando" class="spinner-border spinner-border-sm me-1"></span>
+                    <span x-text="sincronizando ? 'Subiendo...' : (online ? '🔄 Subir Ahora' : '🚫 Esperando señal')"></span>
+                </button>
+            </div>
+            
             <ul class="nav flex-column mt-2">
                 <template x-for="menuId in menuOrder" :key="menuId">
                     <li class="nav-item" :title="menuItems[menuId].label" x-show="!menuItems[menuId].adminOnly || currentUser.role === 'admin'">
-                        <a class="nav-link" :class="{ 'active': view === menuId }" @click="navigate(menuId)"><i class="bi" :class="menuItems[menuId].icon"></i> <span class="nav-text" x-text="menuItems[menuId].label"></span></a>
+                        <a class="nav-link" :class="{ 'active': view === menuId }" @click="navigate(menuId)">
+                            <i class="bi" :class="menuItems[menuId].icon"></i> 
+                            <span class="nav-text" x-text="menuItems[menuId].label"></span>
+                        </a>
                     </li>
                 </template>
             </ul>
-            <div class="mt-auto p-3 border-top border-secondary"><button class="btn btn-outline-light w-100 btn-sm" @click="logout()"><i class="bi bi-box-arrow-left"></i> <span class="nav-text">Salir</span></button></div>
+
+            <div class="mt-auto p-3 border-top border-secondary">
+                <button class="btn btn-outline-light w-100 btn-sm" @click="logout()">
+                    <i class="bi bi-box-arrow-left"></i> <span class="nav-text">Salir</span>
+                </button>
+            </div>
         </div>
 
         <div class="main-content" :class="{ 'expanded': sidebarCollapsed }">
@@ -531,6 +561,11 @@ function appData() {
         currentUser: JSON.parse(localStorage.getItem('pos_user')) || {},
         sidebarCollapsed: false, mobileMenuOpen: false, mobileCartOpen: false, view: 'pos', 
         loginForm: { username: '', password: '' }, loginError: false, cargando: false,
+
+        // --- VARIABLES NUEVAS PARA MODO OFFLINE ---
+        online: navigator.onLine,
+        ventasPendientes: JSON.parse(localStorage.getItem('pos_queue') || '[]'),
+        sincronizando: false,
         
         // Datos
         productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {},
@@ -577,7 +612,48 @@ function appData() {
         },
 
         // --- INICIALIZACIÓN ---
-        async initApp() { if(this.token) { await this.cargarDatos(); await this.loadConfig(); } },
+        async initApp() { 
+            // Listeners para saber si se cae internet
+            window.addEventListener('online', () => { this.online = true; this.intentarSincronizar(); });
+            window.addEventListener('offline', () => { this.online = false; });
+            if(this.token) { await this.cargarDatos(); await this.loadConfig(); } },
+        async intentarSincronizar() {
+            if (this.ventasPendientes.length === 0 || this.sincronizando || !this.online) return;
+
+            this.sincronizando = true;
+            const pendientes = [...this.ventasPendientes]; // Copia para iterar
+            const fallidos = [];
+
+            // Notificación visual (Opcional)
+            // alert("Conexión recuperada. Subiendo ventas pendientes...");
+
+            for (const venta of pendientes) {
+                try {
+                    // Intentamos enviar al servidor
+                    const r = await this.fetchAuth('/api/ventas', {
+                        method: 'POST', 
+                        body: JSON.stringify(venta)
+                    });
+
+                    if (!r.ok) throw new Error("Error servidor");
+                    
+                    // Si funciona, genial, pasamos a la siguiente
+                } catch (e) {
+                    // Si falla, la mantenemos en la lista de fallidos
+                    fallidos.push(venta);
+                }
+            }
+
+            // Actualizamos la lista local con las que NO se pudieron subir
+            this.ventasPendientes = fallidos;
+            localStorage.setItem('pos_queue', JSON.stringify(this.ventasPendientes));
+            this.sincronizando = false;
+            
+            if(this.ventasPendientes.length === 0) {
+                alert("✅ Todas las ventas pendientes se han sincronizado.");
+                this.cargarDatos(); // Recargar historial
+            }
+        },
         async loadConfig() { try { const r=await this.fetchAuth('/api/config'); const d=await r.json(); if(d.menu_order)this.menuOrder=JSON.parse(d.menu_order); this.config=d; this.updateFavicon(); } catch(e){} },
         async saveConfig(k, v) { if(k==='menu_order')v=JSON.stringify(v); await this.fetchAuth('/api/config',{method:'POST',body:JSON.stringify({key:k,value:v})}); },
         async uploadConfig(k, e) { const fd=new FormData(); fd.append('key',k); fd.append('file',e.target.files[0]); const r=await fetch('/api/config/upload',{method:'POST',headers:{'Authorization':this.token},body:fd}); if(r.ok){const d=await r.json();this.config[k]=d.url;if(k==='app_favicon')this.updateFavicon();} },
@@ -748,39 +824,56 @@ function appData() {
             } 
         },
         async procesarVenta() {
-            // 1. Validaciones
-            if(!this.ventaActual.familiaId) return alert("⚠️ Por favor seleccione una Familia/Cliente antes de pagar.");
-            
-            // 2. Confirmación
-            if(!confirm("¿Estás seguro de confirmar la venta?")) return;
+            // 1. Validaciones básicas
+            if(!this.ventaActual.familiaId) return alert("⚠️ Por favor seleccione una Familia/Cliente.");
+            if(!confirm("¿Confirmar venta?")) return;
 
-            // 3. Preparar datos
+            // 2. Preparamos el objeto de datos
             const f = this.familias.find(x => x.id == this.ventaActual.familiaId);
-            const d = {
+            const datosVenta = {
                 vendedor: this.currentUser.nombre,
                 familia: f,
                 total: this.totalCarrito,
                 metodo: this.ventaActual.metodo,
-                carrito: this.carrito
+                carrito: this.carrito,
+                fechaLocal: new Date().toISOString() // Importante para saber cuándo ocurrió realmente
             };
 
-            // 4. Enviar al servidor
-            const r = await this.fetchAuth('/api/ventas', {method: 'POST', body: JSON.stringify(d)});
+            // 3. Lógica Híbrida (Online / Offline)
+            let guardadoExitoso = false;
 
-            if(r.ok) {
-                // ✅ VENTA EXITOSA
-                this.carrito = [];               // Vaciar carro
-                this.ventaActual.familiaId = ''; // Limpiar cliente
-                this.searchFamInput = '';        // Limpiar buscador
-                this.mobileCartOpen = false;     // <--- ESTA ES LA MAGIA (Cierra el modal) 🪄
-                
-                this.cargarDatos();              // Recargar stock y datos
-                
-                // Opcional: Un pequeño feedback visual o vibración si quisieras
-                // navigator.vibrate(200); 
-            } else {
-                alert("❌ Error al procesar la venta. Intente nuevamente.");
+            if (navigator.onLine) {
+                try {
+                    // Intento A: Enviar directo al servidor
+                    const r = await this.fetchAuth('/api/ventas', {method: 'POST', body: JSON.stringify(datosVenta)});
+                    if (r.ok) {
+                        guardadoExitoso = true;
+                        // Si había cosas pendientes, aprovechamos el impulso para subir
+                        this.intentarSincronizar(); 
+                    } else {
+                        throw new Error("Error API");
+                    }
+                } catch (e) {
+                    console.log("Fallo envío online, guardando localmente...");
+                    // Si falla el fetch, NO mostramos error, pasamos al plan B
+                }
             }
+
+            // Plan B: Si no hubo éxito online (o no hay internet), guardar en LocalStorage
+            if (!guardadoExitoso) {
+                this.ventasPendientes.push(datosVenta);
+                localStorage.setItem('pos_queue', JSON.stringify(this.ventasPendientes));
+                alert("⚠️ Sin conexión estable. La venta se guardó en el teléfono y se subirá automáticamente cuando vuelva la señal.");
+            }
+
+            // 4. Limpieza UI (Ocurre siempre, sea online u offline)
+            this.carrito = [];
+            this.ventaActual.familiaId = '';
+            this.searchFamInput = '';
+            this.mobileCartOpen = false;
+            
+            // Solo recargamos datos si tenemos internet, sino mantenemos lo que hay
+            if(navigator.onLine) this.cargarDatos();
         },
         async reembolsarVenta(v){if(confirm("¿Anular?")){await this.fetchAuth(`/api/ventas/${v.id}/refund`,{method:'POST'});this.cargarVentas();}},
         async reenviarBoleta(v){if(confirm("¿Reenviar?")){await this.fetchAuth(`/api/ventas/${v.id}/resend`,{method:'POST'});alert("Enviado");}},
