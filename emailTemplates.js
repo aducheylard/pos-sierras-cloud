@@ -106,14 +106,18 @@ function generarHtmlAnulacion(venta, carrito) {
                 <strong>Aviso:</strong> La transacción <strong>#${venta.id}</strong> ha sido anulada.
             </p>
             
-            <div style="display: flex; justify-content: space-between; font-size: 14px; color: #666; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 14px; color: #666; margin-bottom: 5px;">
                 <span>📅 Fecha Anulación: ${fecha}</span>
                 <span>👤 Vendedor: ${venta.vendedor}</span>
             </div>
 
+            <div style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                💳 Método de pago original: <strong>${venta.metodo_pago}</strong>
+            </div>
             <div style="font-size: 14px; color: #555; margin-bottom: 15px; border-top: 1px dashed #f5c6cb; padding-top: 8px;">
                 👨‍👩‍👧‍👦 <strong>Familia:</strong> ${venta.familia_nombre} <span style="font-size: 0.9em; color: #888;">(ID: ${venta.familia_id})</span>
             </div>
+
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead><tr style="background-color: #f1b0b7;"><th style="padding: 10px; text-align: left; color: #721c24;">Producto</th><th style="padding: 10px; text-align: center; color: #721c24;">Cant.</th><th style="padding: 10px; text-align: right; color: #721c24;">Monto</th></tr></thead>
                 <tbody>${filas}</tbody>
