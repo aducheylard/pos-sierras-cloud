@@ -157,7 +157,20 @@ app.put('/api/familias/:id', requireAuth, (req, res) => {
     }
     res.json({success:true});
 });
-app.delete('/api/familias/:id', requireAuth, (req, res) => { db.prepare('DELETE FROM familias WHERE id=?').run(req.params.id); res.json({success:true}); });
+app.delete('/api/familias/:id', requireAuth, requireAdmin, (req, res) => { // 1. Agregamos requireAdmin
+    
+    // 2. Verificamos si tiene deuda antes de borrar
+    const fam = db.prepare('SELECT deuda FROM familias WHERE id = ?').get(req.params.id);
+    
+    if (fam && fam.deuda !== 0) {
+        // Si la deuda es distinta de 0, prohibimos borrar
+        return res.status(400).json({ error: "⛔ No se puede eliminar una familia con DEUDA pendiente." });
+    }
+
+    // Si no debe nada y soy admin, procedemos a borrar
+    db.prepare('DELETE FROM familias WHERE id=?').run(req.params.id);
+    res.json({ success: true });
+});
 
 
 // --- VENTAS ---
@@ -433,6 +446,22 @@ app.get('/api/export-csv', requireAuth, (req, res) => {
     });
     res.header('Content-Type', 'text/csv; charset=utf-8');
     res.attachment(`ventas.csv`);
+    res.send(csv);
+});
+
+app.get('/api/export-deudas', requireAuth, (req, res) => {
+    // 1. Buscamos familias con deuda mayor a 0
+    const deudores = db.prepare("SELECT * FROM familias WHERE deuda > 0 ORDER BY deuda DESC").all();
+    
+    // 2. Generamos el CSV
+    let csv = "\uFEFFID,Familia,Email,Telefono,Deuda\n"; // \uFEFF es para que Excel lea tildes
+    deudores.forEach(d => {
+        csv += `${d.id},"${d.nombre}","${d.email || ''}","${d.telefono || ''}",${d.deuda}\n`;
+    });
+
+    // 3. Enviamos el archivo
+    res.header('Content-Type', 'text/csv; charset=utf-8');
+    res.attachment(`reporte_deudas_${new Date().toISOString().split('T')[0]}.csv`);
     res.send(csv);
 });
 

@@ -348,8 +348,16 @@
                     <div class="d-flex gap-2 align-items-end">
                         <div><label class="small fw-bold">Desde</label><input type="date" class="form-control" x-model="statsFilters.startDate"></div>
                         <div><label class="small fw-bold">Hasta</label><input type="date" class="form-control" x-model="statsFilters.endDate"></div>
-                        <button class="btn btn-primary" @click="loadStatsView()"><i class="bi bi-arrow-clockwise"></i></button>
-                        <button class="btn btn-success" @click="downloadExcel()"><i class="bi bi-file-excel"></i></button>
+                        
+                        <button class="btn btn-primary" @click="loadStatsView()" title="Refrescar"><i class="bi bi-arrow-clockwise"></i></button>
+                        
+                        <button class="btn btn-danger" @click="downloadDeudas()" title="Descargar Deudores (.csv)">
+                            <i class="bi bi-file-earmark-person"></i> Deudas
+                        </button>
+                        
+                        <button class="btn btn-success" @click="downloadExcel()" title="Descargar Historial (.csv)">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Todo
+                        </button>
                     </div>
                 </div>
 
@@ -357,7 +365,7 @@
                     <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ventas</small><h4 class="my-1" x-text="stats.totalVentas || 0"></h4></div></div>
                     <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ingresos</small><h4 class="my-1 text-success" x-text="'$' + (stats.ingresosTotales/1000).toFixed(0) + 'k'"></h4></div></div>
                     <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Items</small><h4 class="my-1 text-warning" x-text="stats.itemsVendidos || 0"></h4></div></div>
-                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Deuda Hist.</small><h4 class="my-1 text-danger" x-text="'$' + (stats.deudaTotal/1000).toFixed(0) + 'k'"></h4></div></div>
+                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Deuda Histórica</small><h4 class="my-1 text-danger" x-text="'$' + (stats.deudaTotal/1000).toFixed(0) + 'k'"></h4></div></div>
                     
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100 bg-warning-subtle">
@@ -470,7 +478,7 @@
                             </div>
                         </div>
 
-                        <div class="card p-4 shadow-sm border-0 mb-3">
+                                    <div class="card p-4 shadow-sm border-0 mb-3">
                             <h5>📨 Copias de Respaldo (BCC)</h5>
                             <p class="small text-muted mb-2">Ingresa los correos que recibirán una copia oculta de cada venta.</p>
                             
@@ -524,7 +532,38 @@
             <div x-show="view === 'familias'">
                 <div class="d-flex justify-content-between align-items-center mb-3"><h3>Familias</h3><button class="btn btn-primary" @click="toggleFormFamilia()"><i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span></button></div>
                 <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><input type="text" class="form-control" placeholder="Nombre" x-model="formFamilia.nombre"></div><div class="col-md-4"><input type="email" class="form-control" placeholder="Email" x-model="formFamilia.email"></div><div class="col-md-4"><input type="text" class="form-control" placeholder="Teléfono" x-model="formFamilia.telefono"></div><div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'"><input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda"></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarFamilia()">Guardar</button></div></div></div>
-                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>ID</th><th>Familia</th><th>Contacto</th><th>Deuda</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="f in familias" :key="f.id"><tr><td><span class="badge bg-secondary" x-text="f.id"></span></td><td x-text="f.nombre"></td><td><div x-text="f.email" class="small text-muted"></div><div x-text="f.telefono" class="small text-primary"></div></td><td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$'+f.deuda"></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)">X</button></td></tr></template></tbody></table></div>
+                <div class="table-responsive bg-white rounded shadow-sm">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Familia</th>
+                                <th>Contacto</th>
+                                <th>Deuda</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="f in familias" :key="f.id">
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary" x-text="f.id"></span>
+                                    </td>
+                                    <td x-text="f.nombre"></td>
+                                    <td>
+                                        <div x-text="f.email" class="small text-muted"></div>
+                                        <div x-text="f.telefono" class="small text-primary"></div>
+                                    </td>
+                                    <td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$'+f.deuda"></td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)"x-show="currentUser.role === 'admin'">X</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div x-show="view === 'productos'">
                 <div class="d-flex justify-content-between align-items-center mb-3"><h3>Productos</h3><button class="btn btn-primary" @click="toggleFormProducto()"><i class="bi" :class="showFormProd ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormProd ? 'Cerrar' : 'Nuevo'"></span></button></div>
@@ -875,9 +914,45 @@ function appData() {
                 }
             });
         },
+        // 1. Función Genérica para descargar archivos CON TOKEN (Soluciona el error 401)
+        async downloadAuthenticated(url, filename) {
+            try {
+                // Usamos fetchAuth para que envíe el token automáticamente
+                const response = await this.fetchAuth(url);
+                
+                if (response.ok) {
+                    // Convertimos la respuesta en un "Blob" (archivo binario)
+                    const blob = await response.blob();
+                    const urlBlob = window.URL.createObjectURL(blob);
+                    
+                    // Creamos un link invisible y le damos click
+                    const a = document.createElement('a');
+                    a.href = urlBlob;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    
+                    // Limpiamos memoria
+                    window.URL.revokeObjectURL(urlBlob);
+                } else {
+                    alert("❌ Error descargando archivo: No autorizado o error de servidor.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión al descargar.");
+            }
+        },
+
+        // 2. Descargar Historial de Ventas
         downloadExcel() {
             const url = `/api/export-csv?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
-            window.open(url, '_blank');
+            this.downloadAuthenticated(url, `Ventas_${this.statsFilters.startDate}_${this.statsFilters.endDate}.csv`);
+        },
+
+        // 3. Descargar Deudas (Nueva función)
+        downloadDeudas() {
+            this.downloadAuthenticated('/api/export-deudas', 'Reporte_Deudores.csv');
         },
 
         // --- CARRITO ---
@@ -1023,7 +1098,24 @@ function appData() {
             const fd=new FormData(); fd.append('nombre',p.nombre); fd.append('categoria',p.categoria); fd.append('precio',p.precio); fd.append('stock',p.stock); fd.append('activo',p.activo?0:1);
             await this.fetchAuth(`/api/productos/${p.id}`,{method:'PUT',body:fd}); this.cargarDatos();
         },
-        async eliminar(t,id){if(confirm("¿Eliminar?")){await this.fetchAuth(`/api/${t}/${id}`,{method:'DELETE'});if(t==='usuarios')this.cargarUsuarios();else if(t==='ventas')this.cargarVentas();else this.cargarDatos();}},
+        async eliminar(t, id) {
+            if (!confirm("¿Estás seguro de eliminar este registro?")) return;
+
+            // 1. Hacemos la petición al servidor
+            const r = await this.fetchAuth(`/api/${t}/${id}`, { method: 'DELETE' });
+
+            // 2. Verificamos si salió bien (Status 200) o mal (Status 400/500)
+            if (r.ok) {
+                // ✅ ÉXITO: Recargamos los datos
+                if (t === 'usuarios') this.cargarUsuarios();
+                else if (t === 'ventas') this.cargarVentas();
+                else this.cargarDatos();
+            } else {
+                // ❌ ERROR: Leemos el mensaje del servidor y lo mostramos
+                const errorData = await r.json();
+                alert(errorData.error || "Ocurrió un error al intentar eliminar.");
+            }
+        },
 
         // --- AUTH ---
         async login(){const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.loginForm)});if(r.ok){const d=await r.json();this.token=d.token;this.currentUser={role:d.role,nombre:d.nombre};localStorage.setItem('pos_token',this.token);localStorage.setItem('pos_user',JSON.stringify(this.currentUser));this.initApp();}else this.loginError=true;},
