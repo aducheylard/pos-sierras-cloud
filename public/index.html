@@ -348,19 +348,30 @@
             <div x-show="view === 'stats'">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 bg-white p-3 rounded shadow-sm">
                     <div><h3 class="m-0 fw-bold text-primary"><i class="bi bi-graph-up-arrow"></i> Dashboard</h3><small class="text-muted">Estadísticas completas</small></div>
-                    <div class="d-flex gap-2 align-items-end">
-                        <div><label class="small fw-bold">Desde</label><input type="date" class="form-control" x-model="statsFilters.startDate"></div>
-                        <div><label class="small fw-bold">Hasta</label><input type="date" class="form-control" x-model="statsFilters.endDate"></div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-6 col-md-auto">
+                            <label class="small fw-bold">Desde</label>
+                            <input type="date" class="form-control" x-model="statsFilters.startDate">
+                        </div>
                         
-                        <button class="btn btn-primary" @click="loadStatsView()" title="Refrescar"><i class="bi bi-arrow-clockwise"></i></button>
+                        <div class="col-6 col-md-auto">
+                            <label class="small fw-bold">Hasta</label>
+                            <input type="date" class="form-control" x-model="statsFilters.endDate">
+                        </div>
                         
-                        <button class="btn btn-danger" @click="downloadDeudas()" title="Descargar Deudores (.csv)">
-                            <i class="bi bi-file-earmark-person"></i> Deudas
-                        </button>
-                        
-                        <button class="btn btn-success" @click="downloadExcel()" title="Descargar Historial (.csv)">
-                            <i class="bi bi-file-earmark-spreadsheet"></i> Todo
-                        </button>
+                        <div class="col-12 col-md-auto d-flex gap-2">
+                            <button class="btn btn-primary" @click="loadStatsView()" title="Refrescar">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            
+                            <button class="btn btn-danger flex-fill" @click="downloadDeudas()" title="Descargar Deudores (.csv)">
+                                <i class="bi bi-file-earmark-person"></i> <span class="d-md-none d-lg-inline">Deudas</span>
+                            </button>
+                            
+                            <button class="btn btn-success flex-fill" @click="downloadExcel()" title="Descargar Historial (.csv)">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> <span class="d-md-none d-lg-inline">Todo</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
