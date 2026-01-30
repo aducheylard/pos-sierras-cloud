@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sierras POS</title>
+    <title>Venta semana sierras</title>
     <link id="app-favicon" rel="icon" type="image/png" href="">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
         body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
         .login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: #2c3e50; }
@@ -57,7 +60,7 @@
 
     <div x-show="!token" class="login-screen">
         <div class="card p-4 shadow-lg border-0" style="width: 350px;">
-            <div class="text-center mb-4"><h1>🏔️</h1><h3>Sierras POS</h3></div>
+            <div class="text-center mb-4"><h1>🏔️</h1><h3>Sierras de Bellavista</h3></div>
             <div class="mb-3"><input type="text" class="form-control" x-model="loginForm.username" placeholder="Usuario"></div>
             <div class="mb-4"><input type="password" class="form-control" x-model="loginForm.password" @keyup.enter="login()" placeholder="Contraseña"></div>
             <button class="btn btn-primary w-100" @click="login()" :disabled="cargando">Ingresar</button>
@@ -67,14 +70,14 @@
 
     <div x-show="token" style="display: none;">
         <div class="overlay" :class="{ 'active': mobileMenuOpen }" @click="mobileMenuOpen = false"></div>
-        <div class="mobile-header d-lg-none"><button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen"><i class="bi bi-list"></i></button><h5 class="m-0 fw-bold">🏔️ Sierras</h5></div>
+        <div class="mobile-header d-lg-none"><button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen"><i class="bi bi-list"></i></button><h5 class="m-0 fw-bold">🏔️ Sierras de Bellavista</h5></div>
 
         <div class="sidebar d-flex flex-column" :class="{ 'collapsed': sidebarCollapsed, 'active': mobileMenuOpen }">
             
             <div class="p-3 d-flex align-items-center justify-content-between border-bottom border-secondary" style="height: 70px;">
                 <div class="sidebar-header-text overflow-hidden d-flex align-items-center">
                     <img x-show="config.app_logo" :src="config.app_logo" style="height:30px; margin-right:10px;">
-                    <div><h5 class="m-0 fw-bold">🏔️ Sierras</h5><small class="text-white-50" x-text="currentUser.nombre"></small></div>
+                    <div><h5 class="m-0 fw-bold">🏔️ Sierras de Bellavista</h5><small class="text-white-50" x-text="currentUser.nombre"></small></div>
                 </div>
                 <button class="btn btn-sm text-white toggle-desktop-btn" @click="sidebarCollapsed = !sidebarCollapsed"><i class="bi" :class="sidebarCollapsed ? 'bi-list' : 'bi-chevron-left'"></i></button>
             </div>
@@ -409,7 +412,7 @@
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white d-flex justify-content-between">
-                                <h6 class="m-0 fw-bold">📈 Evolución de Ventas</h6>
+                                <h6 class="m-0 fw-bold">📈 Ventas por días</h6>
                                 <select class="form-select form-select-sm w-auto" x-model="chartConfig.evolutionMetric" @change="renderCharts()"><option value="total">Dinero ($)</option><option value="tx">Transacciones (#)</option></select>
                             </div>
                             <div class="card-body"><canvas id="chartEvolution" style="max-height: 300px;"></canvas></div>
@@ -426,7 +429,7 @@
                     <div class="col-md-6">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 fw-bold">🏆 Top Productos</h6>
+                                <h6 class="m-0 fw-bold">🏆 Top productos vendidos</h6>
                                 <div class="d-flex gap-1">
                                     <select class="form-select form-select-sm" x-model="chartConfig.topProdMetric" @change="renderCharts()"><option value="cantidad">Por Cantidad</option><option value="total">Por Dinero</option></select>
                                 </div>
@@ -437,14 +440,14 @@
 
                     <div class="col-md-6">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">👨‍👩‍👧‍👦 Top 5 Familias (Mayor Gasto)</h6></div>
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">👨‍👩‍👧‍👦 Top 5 Familias con más compras</h6></div>
                             <div class="card-body"><canvas id="chartFamilies"></canvas></div>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">⏰ Horarios Punta</h6></div>
+                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">⏰ Horarios con mayores ventas</h6></div>
                             <div class="card-body"><canvas id="chartHours"></canvas></div>
                         </div>
                     </div>
@@ -879,115 +882,205 @@ function appData() {
             this.$nextTick(() => this.renderCharts());
         },
         renderCharts() {
-            // Limpiar lienzos previos
-            ['chartEvolution','chartMethods','chartTopProd','chartFamilies','chartHours','chartCats','chartSeller'].forEach(id=>{
-                if(charts[id]) charts[id].destroy();
+            // 1. INICIALIZAR
+            if (!this.charts) this.charts = {};
+
+            // 2. LIMPIEZA
+            ['chartEvolution', 'chartMethods', 'chartMetodos', 'chartTopProd', 'chartFamilies', 'chartHours', 'chartCats', 'chartSeller'].forEach(id => {
+                if (this.charts[id]) {
+                    this.charts[id].destroy();
+                    this.charts[id] = null;
+                }
             });
-            
-            if(!this.stats.charts) return;
+
+            // 3. REGISTRAR PLUGIN
+            if (typeof ChartDataLabels !== 'undefined') {
+                Chart.register(ChartDataLabels);
+            }
+
+            if (!this.stats || !this.stats.charts) return;
             const d = this.stats.charts;
 
-            // 1. EVOLUCIÓN (LINEA - Filtrable)
-            charts['chartEvolution'] = new Chart(document.getElementById('chartEvolution'), {
+            // --- CONFIGURACIÓN A: TORTAS (Texto Blanco con Sombra) ---
+            // Usamos sombra para que se lea incluso en colores claros como amarillo
+            const pieDatalabels = {
+                color: '#ffffff',
+                font: { weight: 'bold', size: 12 },
+                textShadowBlur: 4,
+                textShadowColor: '#000000',
+                formatter: (value, ctx) => {
+                    let sum = 0;
+                    ctx.chart.data.datasets[0].data.map(data => { sum += data; });
+                    if(sum === 0) return "0%";
+                    if ((value * 100 / sum) < 5) return null; // Ocultar si es < 5%
+                    return (value * 100 / sum).toFixed(1) + "%";
+                }
+            };
+            // Especial para "Ventas por Días" para que se lea sobre la línea
+            const lineDatalabels = {
+                color: '#333333',
+                align: 'top',      // Flotando arriba del punto
+                anchor: 'end',
+                offset: 4,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)', // Fondo blanco semitransparente
+                borderRadius: 4,
+                padding: 4,
+                font: { weight: 'bold', size: 10 },
+                formatter: (value) => {
+                    // Si la métrica actual es dinero, agregamos el signo $
+                    return this.chartConfig.evolutionMetric === 'total' ? '$' + value.toLocaleString('es-CL') : value;
+                }
+            };
+
+            // --- CONFIGURACIÓN B: BARRAS (Texto Negro AFUERA) ---
+            // Esto soluciona tu problema: Texto negro sobre el fondo blanco
+            const barDatalabels = {
+                color: '#333333', // Gris muy oscuro / Negro
+                anchor: 'end',    // Anclado al final de la barra
+                align: 'end',     // Empujado HACIA AFUERA
+                offset: 0,        // Pegado al borde
+                font: { weight: 'bold', size: 11 },
+                formatter: (value, ctx) => {
+                    // Detectar si es dinero
+                    const label = ctx.dataset.label || '';
+                    if (label.includes('$') || label.includes('Gastado') || label.includes('Dinero')) {
+                        return '$' + value.toLocaleString('es-CL');
+                    }
+                    return value;
+                }
+            };
+
+            // --- HELPER ---
+            const createChart = (idCanvas, config) => {
+                const ctx = document.getElementById(idCanvas);
+                if (ctx) this.charts[idCanvas] = new Chart(ctx, config);
+            };
+
+            // -------------------------------------------------------
+
+            // 1. EVOLUCIÓN (LINEA) - AHORA CON ETIQUETAS ACTIVAS
+            createChart('chartEvolution', {
                 type: 'line',
                 data: {
                     labels: d.salesByDate.map(x => x.dia),
                     datasets: [{
                         label: this.chartConfig.evolutionMetric === 'total' ? 'Ventas ($)' : 'Transacciones (#)',
                         data: d.salesByDate.map(x => this.chartConfig.evolutionMetric === 'total' ? x.total : x.tx),
-                        borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', fill: true, tension: 0.3
+                        borderColor: '#0d6efd', 
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)', 
+                        fill: true, 
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
                     }]
-                }, options: { maintainAspectRatio: false }
-            });
-
-            // 2. MÉTODOS PAGO (DONA)
-            charts['chartMethods'] = new Chart(document.getElementById('chartMethods'), {
-                type: 'doughnut',
-                data: {
-                    labels: d.salesByMethod.map(x => x.metodo_pago),
-                    datasets: [{ data: d.salesByMethod.map(x => x.total), backgroundColor: ['#198754', '#ffc107', '#0dcaf0'] }]
+                }, 
+                options: { 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { ticks: { callback: (v) => this.chartConfig.evolutionMetric === 'total' ? '$' + v.toLocaleString('es-CL') : v } } 
+                    },
+                    plugins: { 
+                        // AQUÍ ESTÁ EL CAMBIO: Asignamos la config de línea
+                        datalabels: lineDatalabels 
+                    }
                 }
             });
 
-            // 3. TOP PRODUCTOS (Con formato CLP en Tooltip)
+            // 2. MÉTODOS DE PAGO (TORTA)
+            const idMetodos = document.getElementById('chartMethods') ? 'chartMethods' : 'chartMetodos';
+            createChart(idMetodos, {
+                type: 'pie',
+                data: {
+                    labels: d.salesByMethod.map(x => x.metodo_pago || x.metodo),
+                    datasets: [{
+                        data: d.salesByMethod.map(x => x.total),
+                        backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d']
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, datalabels: pieDatalabels }
+                }
+            });
+
+            // 3. TOP PRODUCTOS (BARRAS HORIZONTALES)
             const topData = d.topProducts.slice(0, 10);
-            charts['chartTopProd'] = new Chart(document.getElementById('chartTopProd'), {
+            const isMoney = this.chartConfig.topProdMetric === 'total';
+            
+            createChart('chartTopProd', {
                 type: 'bar',
                 data: {
                     labels: topData.map(x => x.nombre),
                     datasets: [{
-                        label: this.chartConfig.topProdMetric === 'cantidad' ? 'Unidades' : 'Dinero ($)',
+                        label: isMoney ? 'Dinero ($)' : 'Unidades',
                         data: topData.map(x => x[this.chartConfig.topProdMetric]),
-                        backgroundColor: this.chartConfig.topProdMetric === 'cantidad' ? '#fd7e14' : '#20c997',
+                        backgroundColor: isMoney ? '#20c997' : '#fd7e14',
                     }]
-                }, 
-                options: { 
-                    indexAxis: 'y', 
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { // Eje X (Valores)
-                            ticks: {
-                                callback: function(value) { return '$' + value.toLocaleString('es-CL'); } // <--- EJE CON PUNTOS
-                            }
-                        }
+                },
+                options: {
+                    indexAxis: 'y', maintainAspectRatio: false,
+                    layout: { padding: { right: 50 } }, // Espacio extra a la derecha para que quepa el texto
+                    scales: { 
+                        x: { ticks: { callback: (v) => isMoney ? '$' + v.toLocaleString('es-CL') : v } } 
                     },
                     plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) { label += ': '; }
-                                    if (context.parsed.x !== null) {
-                                        // Formato en el popup al pasar el mouse
-                                        label += context.parsed.x.toLocaleString('es-CL'); 
-                                    }
-                                    return label;
-                                }
-                            }
+                        tooltip: { callbacks: { label: (c) => (c.dataset.label || '') + ': ' + (isMoney ? '$' : '') + (c.parsed.x||0).toLocaleString('es-CL') } },
+                        datalabels: {
+                            ...barDatalabels,
+                            formatter: (value) => isMoney ? '$' + value.toLocaleString('es-CL') : value
                         }
                     }
                 }
             });
 
-            // 4. TOP FAMILIAS (BARRAS - NUEVO)
+            // 4. TOP FAMILIAS (BARRAS VERTICALES)
             const topFam = d.salesByFamily.slice(0, 5);
-            charts['chartFamilies'] = new Chart(document.getElementById('chartFamilies'), {
+            createChart('chartFamilies', {
                 type: 'bar',
                 data: {
                     labels: topFam.map(x => x.nombre),
-                    datasets: [{
-                        label: 'Total Gastado ($)',
-                        data: topFam.map(x => x.total),
-                        backgroundColor: '#6f42c1'
-                    }]
-                }, options: { maintainAspectRatio: false }
+                    datasets: [{ label: 'Total Gastado ($)', data: topFam.map(x => x.total), backgroundColor: '#6f42c1' }]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    layout: { padding: { top: 20 } }, // Espacio arriba para el texto
+                    scales: { y: { ticks: { callback: (v) => '$' + v.toLocaleString('es-CL') } } },
+                    plugins: { datalabels: barDatalabels }
+                }
             });
 
-            // 5. HORAS PUNTA (BARRAS VERTICALES)
-            charts['chartHours'] = new Chart(document.getElementById('chartHours'), {
+            // 5. HORARIOS PUNTA (BARRAS VERTICALES)
+            createChart('chartHours', {
                 type: 'bar',
                 data: {
                     labels: d.salesByHour.map(x => x.hora + ':00'),
                     datasets: [{ label: 'Ventas (#)', data: d.salesByHour.map(x => x.count), backgroundColor: '#6610f2' }]
-                }, options: { maintainAspectRatio: false }
-            });
-
-            // 6. CATEGORÍAS (PIE)
-            charts['chartCats'] = new Chart(document.getElementById('chartCats'), {
-                type: 'pie',
-                data: {
-                    labels: d.topCategories.map(x => x.nombre),
-                    datasets: [{ data: d.topCategories.map(x => x.total), backgroundColor: ['#0d6efd','#dc3545','#ffc107','#198754','#6610f2'] }]
+                }, 
+                options: { 
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20 } }, // Espacio arriba
+                    plugins: { datalabels: barDatalabels }
                 }
             });
 
-            // 7. VENDEDORES (DOUGHNUT)
-            charts['chartSeller'] = new Chart(document.getElementById('chartSeller'), {
+            // 6. CATEGORÍAS (TORTA)
+            createChart('chartCats', {
+                type: 'pie',
+                data: {
+                    labels: d.topCategories.map(x => x.nombre),
+                    datasets: [{ data: d.topCategories.map(x => x.total), backgroundColor: ['#0d6efd', '#dc3545', '#ffc107', '#198754', '#6610f2'] }]
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, datalabels: pieDatalabels } }
+            });
+
+            // 7. VENDEDORES (DONA)
+            createChart('chartSeller', {
                 type: 'doughnut',
                 data: {
                     labels: d.salesBySeller.map(x => x.vendedor),
                     datasets: [{ data: d.salesBySeller.map(x => x.total), backgroundColor: ['#0dcaf0', '#adb5bd', '#20c997'] }]
-                }
+                },
+                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, datalabels: pieDatalabels } }
             });
         },
         // 1. Función Genérica para descargar archivos CON TOKEN (Soluciona el error 401)
