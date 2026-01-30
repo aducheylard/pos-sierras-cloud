@@ -70,8 +70,12 @@ function generarHtmlBoleta(data, carrito) {
                     <li>📅 <strong>Fecha:</strong> ${fecha}</li>
                 </ul>
                 <div style="margin-top: 5px;">👤 <strong>Vendedor:</strong> ${data.vendedor}</div>
-            </div>
-
+                
+                <div style="margin-top: 5px; color: #555;">
+                    👨‍👩‍👧‍👦 <strong>Familia:</strong> ${data.familiaNombre} <span style="font-size: 0.9em; color: #888;">(ID: ${data.familiaId})</span>
+                </div>
+                </div>
+            
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead><tr style="background-color: #f8f9fa;"><th style="padding: 10px; text-align: left;">Producto</th><th style="padding: 10px; text-align: center;">Cant.</th><th style="padding: 10px; text-align: right;">Precio</th><th style="padding: 10px; text-align: right;">Total</th></tr></thead>
                 <tbody>${filas}</tbody>
