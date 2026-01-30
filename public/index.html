@@ -137,9 +137,34 @@
 
                 <div class="row g-3">
                     <div class="col-12 col-lg-8 order-1 order-lg-1">
+                        <div class="d-flex flex-column gap-2 mb-3">
+
+                            <div x-show="!online" style="display: none;" class="alert alert-danger border-0 shadow-sm text-center m-0" x-transition>
+                                <div class="fw-bold fs-5"><i class="bi bi-wifi-off"></i> SIN CONEXIÓN</div>
+                                <div class="small opacity-75">Modo Offline. Las ventas se guardarán en tu dispositivo.</div>
+                            </div>
+
+                            <template x-if="ventasPendientes.length > 0">
+                                <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center m-0" x-transition>
+                                    <div>
+                                        <strong class="d-flex align-items-center gap-2 text-dark">
+                                            <i class="bi bi-cloud-slash-fill fs-5"></i> 
+                                            <span class="fs-5" x-text="ventasPendientes.length"></span> ventas por subir
+                                        </strong>
+                                        <div class="small text-muted" style="line-height:1;">Están guardadas en este dispositivo.</div>
+                                    </div>
+                                    <button @click="intentarSincronizar()" class="btn btn-dark fw-bold px-3 py-2" :disabled="!online || sincronizando">
+                                        <span x-show="sincronizando" class="spinner-border spinner-border-sm me-1"></span>
+                                        <span x-text="sincronizando ? 'Subiendo...' : (online ? '☁️ Subir Ahora' : '🚫 Esperando red')"></span>
+                                    </button>
+                                </div>
+                            </template>
+
+                        </div>
                         <input type="text" class="form-control form-control-lg mb-3 shadow-sm" placeholder="🔍 Buscar producto..." x-model="searchProd">
                         
-                        <div class="row g-2 pb-5"> <template x-for="p in productosFiltrados.filter(x => x.activo)" :key="p.id">
+                        <div class="row g-2 pb-5"> 
+                            <template x-for="p in productosFiltrados.filter(x => x.activo)" :key="p.id">
                                 <div class="col-6 col-md-4 col-lg-3">
                                     <div class="card card-prod h-100 shadow-sm border-0" :class="{'disabled-prod': (p.stock || 0) <= 0}" @click="(p.stock||0) > 0 && agregarAlCarro(p)">
                                         <div class="card-body text-center p-2 d-flex flex-column justify-content-center position-relative">
@@ -613,10 +638,27 @@ function appData() {
 
         // --- INICIALIZACIÓN ---
         async initApp() { 
-            // Listeners para saber si se cae internet
+            // 1. Limpieza de seguridad (Agrega esto al inicio)
+            if (!Array.isArray(this.ventasPendientes)) {
+                this.ventasPendientes = [];
+                localStorage.setItem('pos_queue', '[]');
+            }
+            // 2. Listeners de conexión
             window.addEventListener('online', () => { this.online = true; this.intentarSincronizar(); });
             window.addEventListener('offline', () => { this.online = false; });
-            if(this.token) { await this.cargarDatos(); await this.loadConfig(); } },
+            
+            // 3. Cargar datos básicos
+            if(this.token) { 
+                await this.cargarDatos(); 
+                await this.loadConfig(); 
+                
+                // 4. NUEVO: Si entramos y ya hay internet, intentamos subir pendientes automáticamente
+                if(this.online && this.ventasPendientes.length > 0) {
+                    console.log("Internet detectado al inicio. Sincronizando...");
+                    setTimeout(() => this.intentarSincronizar(), 1000); // Pequeña espera para asegurar carga
+                }
+            } 
+        },
         async intentarSincronizar() {
             if (this.ventasPendientes.length === 0 || this.sincronizando || !this.online) return;
 
