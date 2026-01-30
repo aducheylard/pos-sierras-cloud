@@ -311,13 +311,20 @@ app.post('/api/ventas/:id/refund', requireAuth, requireAdmin, (req, res) => {
         t();
         res.json({ success: true }); // 1. Respuesta al cliente
 
-        // 2. Envío de correo (Si falla, no botará el servidor gracias al cambio de abajo)
+        // 2. Envío de correo con COPIA OCULTA (BCC)
         if(v.familia_email) {
             let detalle = [];
             try { detalle = JSON.parse(v.detalle_json); } catch(e){}
-            // Asegúrate de tener generarHtmlAnulacion importado arriba
+
+            // A. Obtenemos la lista de correos para copia
+            const configCopias = db.prepare("SELECT value FROM configuracion WHERE key = 'email_copias'").get();
+            const listaCopias = configCopias ? configCopias.value : '';
+
+            // B. Generamos el HTML
             const html = generarHtmlAnulacion(v, detalle);
-            enviarEmail(v.familia_email, `Anulación Boleta N°${v.id}`, html);
+
+            // C. Enviamos (Pasando listaCopias como 4to argumento)
+            enviarEmail(v.familia_email, `Anulación Boleta N°${v.id}`, html, listaCopias);
         }
 
     } catch(e) { 
