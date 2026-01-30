@@ -469,6 +469,26 @@
                                 </label>
                             </div>
                         </div>
+
+                        <div class="card p-4 shadow-sm border-0 mb-3">
+                            <h5>📨 Copias de Respaldo (BCC)</h5>
+                            <p class="small text-muted mb-2">Ingresa los correos que recibirán una copia oculta de cada venta.</p>
+                            
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Lista de Correos</label>
+                                <textarea class="form-control" rows="2" 
+                                        placeholder="jefe@empresa.com, contabilidad@empresa.com"
+                                        x-model="config.email_copias"></textarea>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">Separa con comas (,)</small>
+                                <button class="btn btn-primary btn-sm" @click="saveConfig('email_copias', config.email_copias); alert('✅ Correos de respaldo guardados.')">
+                                    Guardar Lista
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div class="col-md-6">

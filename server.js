@@ -69,7 +69,8 @@ const defaultConfig = {
     'menu_order': JSON.stringify(['pos', 'ventas', 'familias', 'productos', 'usuarios', 'stats', 'config']), 
     'app_logo': '', 
     'app_favicon': '',
-    'mostrar_deuda_email': 'true' // <--- NUEVO: Por defecto sí la muestra
+    'mostrar_deuda_email': 'true',
+    'email_copias': ''
 };
 Object.keys(defaultConfig).forEach(k => { try { db.prepare('INSERT OR IGNORE INTO configuracion (key, value) VALUES (?, ?)').run(k, defaultConfig[k]); } catch(e){} });
 
@@ -100,11 +101,19 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
 });
 
-async function enviarEmail(to, subject, html) {
+async function enviarEmail(to, subject, html, bcc = '') {
     if(!to) { console.log("⚠️ No se envió email: Destinatario vacío"); return; }
     try {
-        await transporter.sendMail({ from: { name: 'Sierras POS', address: SMTP_FROM }, sender: SMTP_FROM, replyTo: SMTP_FROM, to: to, subject: subject, html: html });
-        console.log(`📧 Email enviado a ${to}: ${subject}`);
+        await transporter.sendMail({ 
+            from: { name: 'Sierras POS', address: SMTP_FROM }, 
+            sender: SMTP_FROM, 
+            replyTo: SMTP_FROM, 
+            to: to, 
+            bcc: bcc, // <--- AQUÍ AGREGAMOS LA COPIA OCULTA
+            subject: subject, 
+            html: html 
+        });
+        console.log(`📧 Email enviado a ${to} (Copia a: ${bcc || 'nadie'})`);
     } catch (e) { console.error(`❌ Error enviando email a ${to}:`, e.message); }
 }
 
@@ -205,6 +214,9 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
             // 1. Consultamos la configuración (Si no existe, asumimos 'true' por defecto)
             const configDeuda = db.prepare("SELECT value FROM configuracion WHERE key = 'mostrar_deuda_email'").get();
             const mostrarDeuda = configDeuda ? configDeuda.value === 'true' : true;
+            // 2. NUEVO: Config Copias
+            const configCopias = db.prepare("SELECT value FROM configuracion WHERE key = 'email_copias'").get();
+            const listaCopias = configCopias ? configCopias.value : '';
 
             const html = generarHtmlBoleta({ 
                 id: resultadoVenta.id,
@@ -216,7 +228,7 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
                 mostrarDeuda: mostrarDeuda // <--- Pasamos la bandera a la plantilla
             }, carrito);
             
-            enviarEmail(familia.email, `Boleta N°${resultadoVenta.id} - Sierras`, html);
+            enviarEmail(familia.email, `Boleta N°${resultadoVenta.id} - Sierras`, html, listaCopias);
         }
     } catch(e) { 
         if(!res.headersSent) res.status(500).json({ error: e.message }); 
