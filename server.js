@@ -138,9 +138,17 @@ function requireAdmin(req, res, next) {
 app.get('/api/familias', requireAuth, (req, res) => res.json(db.prepare('SELECT * FROM familias').all()));
 app.post('/api/familias', requireAuth, (req, res) => {
     const {nombre, email, telefono} = req.body;
+    
+    // VALIDACIÓN DE DUPLICADO (NUEVO)
+    // Buscamos si existe el nombre (ignorando mayúsculas/minúsculas)
+    const existe = db.prepare('SELECT id FROM familias WHERE nombre = ? COLLATE NOCASE').get(nombre.trim());
+    if (existe) {
+        return res.status(400).json({ error: `⚠️ El nombre "${nombre}" ya está registrado.` });
+    }
+
     const vendedor = db.prepare('SELECT nombre FROM usuarios WHERE id=?').get(req.userId);
     try {
-        db.prepare('INSERT INTO familias (nombre, email, telefono, deuda) VALUES (?, ?, ?, 0)').run(nombre, email, telefono);
+        db.prepare('INSERT INTO familias (nombre, email, telefono, deuda) VALUES (?, ?, ?, 0)').run(nombre.trim(), email, telefono);
         if(email) {
             const html = generarHtmlBienvenida(nombre, vendedor ? vendedor.nombre : 'Staff', 0);
             enviarEmail(email, 'Bienvenido a Sierras POS', html);
@@ -150,10 +158,19 @@ app.post('/api/familias', requireAuth, (req, res) => {
 });
 app.put('/api/familias/:id', requireAuth, (req, res) => {
     const {nombre, email, telefono, deuda} = req.body;
+    const id = req.params.id;
+
+    // VALIDACIÓN DE DUPLICADO AL EDITAR (NUEVO)
+    // Buscamos si existe ESE nombre en OTRO ID diferente al mío
+    const existe = db.prepare('SELECT id FROM familias WHERE nombre = ? AND id != ? COLLATE NOCASE').get(nombre.trim(), id);
+    if (existe) {
+        return res.status(400).json({ error: `⚠️ El nombre "${nombre}" ya lo usa otra familia.` });
+    }
+
     if(deuda === undefined){
-        db.prepare('UPDATE familias SET nombre=?, email=?, telefono=? WHERE id=?').run(nombre, email, telefono, req.params.id);
+        db.prepare('UPDATE familias SET nombre=?, email=?, telefono=? WHERE id=?').run(nombre.trim(), email, telefono, id);
     } else {
-        db.prepare('UPDATE familias SET nombre=?, email=?, telefono=?, deuda=? WHERE id=?').run(nombre, email, telefono, deuda, req.params.id);
+        db.prepare('UPDATE familias SET nombre=?, email=?, telefono=?, deuda=? WHERE id=?').run(nombre.trim(), email, telefono, deuda, id);
     }
     res.json({success:true});
 });

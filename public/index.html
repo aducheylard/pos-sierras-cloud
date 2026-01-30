@@ -1070,7 +1070,30 @@ function appData() {
         handleFileUpload(e){this.fotoFile=e.target.files[0]},
         
         async guardarUsuario(){let u='/api/usuarios',m='POST';if(this.formUser.id){u+=`/${this.formUser.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formUser)}); this.toggleFormUsuario();this.cargarUsuarios();},
-        async guardarFamilia(){let u='/api/familias',m='POST';if(this.formFamilia.id){u+=`/${this.formFamilia.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formFamilia)}); this.toggleFormFamilia();this.cargarDatos();},
+        async guardarFamilia() {
+            let u = '/api/familias', m = 'POST';
+            if (this.formFamilia.id) {
+                u += `/${this.formFamilia.id}`;
+                m = 'PUT';
+            }
+
+            // Hacemos la petición
+            const r = await this.fetchAuth(u, {
+                method: m,
+                body: JSON.stringify(this.formFamilia)
+            });
+
+            // VALIDAMOS LA RESPUESTA
+            if (r.ok) {
+                // ✅ Éxito
+                this.toggleFormFamilia();
+                this.cargarDatos();
+            } else {
+                // ❌ Error (Nombre duplicado)
+                const errorData = await r.json();
+                alert(errorData.error || "Error al guardar familia");
+            }
+        },
         
         async guardarProducto(){
             const fd=new FormData(); 
