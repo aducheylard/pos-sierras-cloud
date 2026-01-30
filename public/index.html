@@ -288,7 +288,14 @@
                         <div class="col-md-2"><span class="filter-label">Hasta</span><input type="date" class="form-control" x-model="filters.endDate"></div>
                         <div class="col-md-3"><span class="filter-label">Buscar</span><input type="text" class="form-control" placeholder="Familia o Vendedor" x-model="filters.search"></div>
                         <div class="col-md-2"><span class="filter-label">Método</span><select class="form-select" x-model="filters.metodo"><option value="">Todos</option><option value="Efectivo">Efectivo</option><option value="Cuenta">Cuenta</option><option value="reembolsado">Anulado</option></select></div>
-                        <div class="col-md-3"><span class="filter-label">Vendedor</span><select class="form-select" x-model="filters.vendedor"><option value="">Todos</option><template x-for="v in uniqueVendedores" :key="v"><option :value="v" x-text="v"></option></template></select></div>
+                        <div class="col-md-3" x-show="currentUser.role === 'admin'"> <span class="filter-label">Vendedor</span>
+                            <select class="form-select" x-model="filters.vendedor">
+                                <option value="">Todos</option>
+                                <template x-for="v in uniqueVendedores" :key="v">
+                                    <option :value="v" x-text="v"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="table-responsive bg-white rounded shadow-sm">

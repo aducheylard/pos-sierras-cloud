@@ -152,7 +152,24 @@ app.delete('/api/familias/:id', requireAuth, (req, res) => { db.prepare('DELETE 
 
 
 // --- VENTAS ---
-app.get('/api/ventas', requireAuth, (req, res) => res.json(db.prepare('SELECT * FROM ventas ORDER BY id DESC LIMIT 500').all()));
+app.get('/api/ventas', requireAuth, (req, res) => {
+    // 1. Identificamos quién hace la petición
+    const user = db.prepare('SELECT role, nombre FROM usuarios WHERE id = ?').get(req.userId);
+    
+    if (!user) return res.status(401).json({error: "Usuario no encontrado"});
+
+    // 2. Decidimos qué datos mostrar según el rol
+    if (user.role === 'admin') {
+        // El ADMIN ve TODO
+        const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC LIMIT 500').all();
+        res.json(ventas);
+    } else {
+        // El VENDEDOR ve SOLO LO SUYO
+        // (Filtramos donde la columna 'vendedor' sea igual a su nombre)
+        const ventas = db.prepare('SELECT * FROM ventas WHERE vendedor = ? ORDER BY id DESC LIMIT 500').all(user.nombre);
+        res.json(ventas);
+    }
+});
 app.post('/api/ventas', requireAuth, async (req, res) => {
     const { vendedor, familia, total, metodo, carrito } = req.body;
     
