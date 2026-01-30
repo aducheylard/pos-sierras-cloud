@@ -129,7 +129,7 @@
                         </div>
                         <div class="lh-1">
                             <small class="text-white-50" style="font-size: 0.8rem;">Total a Pagar</small>
-                            <div class="fw-bold fs-5" x-text="'$' + totalCarrito"></div>
+                            <div class="fw-bold fs-5" x-text="'$' + formatMoney(totalCarrito)"></div>
                         </div>
                     </div>
                     <button class="btn btn-outline-light btn-sm fw-bold">Ver Carro <i class="bi bi-chevron-up"></i></button>
@@ -176,7 +176,7 @@
                                             </div>
                                             <div class="mb-1" style="min-height: 20px;"><template x-for="cat in (p.categoria || '').split(',').filter(Boolean)"><span class="badge bg-secondary-subtle text-secondary border category-tag" x-text="cat"></span></template></div>
                                             <h6 class="fw-bold m-0 text-dark text-truncate small" x-text="p.nombre"></h6>
-                                            <div class="fw-bold mt-1" :class="(p.stock||0) > 0 ? 'text-primary' : 'text-danger'" x-text="(p.stock||0) > 0 ? '$' + p.precio : 'Agotado'"></div>
+                                            <div class="fw-bold mt-1" :class="(p.stock||0) > 0 ? 'text-primary' : 'text-danger'" x-text="(p.stock||0) > 0 ? '$' + formatMoney(p.precio) : 'Agotado'"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -241,7 +241,7 @@
                                         <div class="d-flex justify-content-between align-items-center border-bottom py-2 px-1">
                                             <div style="width: 50%; line-height: 1.2;">
                                                 <div class="fw-bold text-dark text-truncate small" x-text="item.nombre"></div>
-                                                <small class="text-muted" style="font-size: 0.75rem;" x-text="'$' + item.precio + ' c/u'"></small>
+                                                <small class="text-muted" style="font-size: 0.75rem;" x-text="'$' + formatMoney(item.precio) + ' c/u'"></small>
                                             </div>
                                             <div class="d-flex align-items-center gap-1">
                                                 <div class="input-group input-group-sm" style="width: 90px;">
@@ -262,7 +262,7 @@
                                 <div class="bg-white p-3 rounded border shadow-sm">
                                     <div class="d-flex justify-content-between align-items-end mb-3">
                                         <span class="text-muted">Total a Pagar</span>
-                                        <span class="display-6 fw-bold text-primary" x-text="'$' + totalCarrito"></span>
+                                        <span class="display-6 fw-bold text-primary" x-text="'$' + formatMoney(totalCarrito)"></span>
                                     </div>
                                     <div class="d-grid gap-2">
                                         <button class="btn btn-success btn-lg fw-bold shadow-sm d-flex justify-content-between align-items-center px-4" @click="ventaActual.metodo='Efectivo'; procesarVenta()">
@@ -324,9 +324,9 @@
                                         <div class="fw-bold" x-text="v.familia_nombre"></div>
                                         <div class="small text-muted" x-text="'ID: ' + (v.familia_id || '-')"></div>
                                     </td>
-                                    <td class="fw-bold" x-text="'$' + v.total"></td>
+                                    <td class="fw-bold" x-text="'$' + formatMoney(v.total)"></td>
                                     <td :class="{'text-danger': (v.saldo_historico||0)>0, 'text-success': (v.saldo_historico||0)<0}">
-                                        <span x-text="'$' + (v.saldo_historico || 0)"></span>
+                                        <span x-text="'$' + formatMoney(v.saldo_historico)"></span>
                                     </td>
                                     <td>
                                         <span class="badge" :class="v.status === 'reembolsado' ? 'bg-danger' : (v.metodo_pago === 'Efectivo' ? 'bg-success' : 'bg-primary')" x-text="v.status === 'reembolsado' ? 'Anulado' : v.metodo_pago"></span>
@@ -362,20 +362,41 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ventas</small><h4 class="my-1" x-text="stats.totalVentas || 0"></h4></div></div>
-                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Ingresos</small><h4 class="my-1 text-success" x-text="'$' + (stats.ingresosTotales/1000).toFixed(0) + 'k'"></h4></div></div>
-                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Items</small><h4 class="my-1 text-warning" x-text="stats.itemsVendidos || 0"></h4></div></div>
-                    <div class="col-6 col-md-2"><div class="card p-2 border-0 shadow-sm text-center h-100"><small class="text-muted fw-bold">Deuda Histórica</small><h4 class="my-1 text-danger" x-text="'$' + (stats.deudaTotal/1000).toFixed(0) + 'k'"></h4></div></div>
-                    
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100">
+                            <small class="text-muted fw-bold">Ingresos (Efectivo + Cuenta familiar)</small>
+                            <h4 class="my-1 text-success" x-text="'$' + formatMoney(stats.ingresosTotales)"></h4>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100">
+                            <small class="text-muted fw-bold">Deuda total cuenta familiar</small>
+                            <h4 class="my-1 text-danger" x-text="'$' + formatMoney(stats.deudaTotal)"></h4>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100">
+                            <small class="text-muted fw-bold">Cantidad de ventas</small>
+                            <h4 class="my-1" x-text="stats.totalVentas || 0"></h4>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100">
+                            <small class="text-muted fw-bold">Items vendidos</small>
+                            <h4 class="my-1 text-warning" x-text="stats.itemsVendidos || 0"></h4>
+                        </div>
+                    </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100 bg-warning-subtle">
-                            <small class="text-dark fw-bold">Mejor Día ($)</small>
-                            <div class="lh-1 mt-1"><small x-text="bestDayMoney.date"></small><div class="fw-bold" x-text="'$' + (bestDayMoney.total || 0).toLocaleString('es-CL')"></div></div>
+                            <small class="text-dark fw-bold">Mejor día por ingresos </small>
+                            <div class="lh-1 mt-1"><small x-text="bestDayMoney.date"></small>
+                                <div class="fw-bold" x-text="'$' + formatMoney(bestDayMoney.total)"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100 bg-info-subtle">
-                            <small class="text-dark fw-bold">Mejor Día (#)</small>
+                            <small class="text-dark fw-bold">Mejor día por cantidad de ventas</small>
                             <div class="lh-1 mt-1">
                                 <small x-text="bestDayTx.date"></small>
                                 <div class="fw-bold" x-text="(bestDayTx.count || 0) + ' ventas'"></div>
@@ -554,7 +575,7 @@
                                         <div x-text="f.email" class="small text-muted"></div>
                                         <div x-text="f.telefono" class="small text-primary"></div>
                                     </td>
-                                    <td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$'+f.deuda"></td>
+                                    <td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$' + formatMoney(f.deuda)"></td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button>
                                         <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)"x-show="currentUser.role === 'admin'">X</button>
@@ -631,7 +652,45 @@
                     </div>
                 </div>
 
-                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th width="60">Foto</th><th>Nombre</th><th>Categorías</th><th>Precio</th><th>Stock</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="p in productos" :key="p.id"><tr :class="{'table-secondary text-muted':!p.activo}"><td><img x-show="p.foto" :src="p.foto" style="width:40px;height:40px;object-fit:contain;"></td><td x-text="p.nombre"></td><td><template x-for="c in (p.categoria||'').split(',').filter(Boolean)"><span class="badge bg-light text-dark border me-1" x-text="c"></span></template></td><td x-text="'$'+p.precio"></td><td x-text="p.stock"></td><td><div class="form-check form-switch"><input class="form-check-input" type="checkbox" :checked="p.activo" @change="cambiarEstadoProducto(p)"></div></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicion(p)">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('productos', p.id)">X</button></td></tr></template></tbody></table></div>
+                <div class="table-responsive bg-white rounded shadow-sm">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="60">Foto</th>
+                                <th>Nombre</th>
+                                <th>Categorías</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="p in productos" :key="p.id">
+                                <tr :class="{'table-secondary text-muted':!p.activo}">
+                                    <td><img x-show="p.foto" :src="p.foto" style="width:40px;height:40px;object-fit:contain;"></td>
+                                    <td x-text="p.nombre"></td>
+                                    <td>
+                                        <template x-for="c in (p.categoria||'').split(',').filter(Boolean)">
+                                            <span class="badge bg-light text-dark border me-1" x-text="c"></span>
+                                        </template>
+                                    </td>
+                                    <td x-text="'$' + formatMoney(p.precio)"></td>
+                                    <td x-text="p.stock"></td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" :checked="p.activo" @change="cambiarEstadoProducto(p)">
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @click="prepararEdicion(p)">✏️</button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('productos', p.id)">X</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -677,6 +736,10 @@ function appData() {
 
         // UI Helpers
         searchFamInput: '', showFamList: false, showFormUser: false, formUser: {}, showFormFamilia: false, formFamilia: {}, showFormProd: false, formProd: {}, fotoFile: null, searchProd: '', 
+
+        formatMoney(n) {
+            return (n || 0).toLocaleString('es-CL');
+        },
 
         // --- COMPUTADOS (GETTERS) ---
         get productosFiltrados() { if(!this.searchProd) return this.productos; const s=this.searchProd.toLowerCase(); return this.productos.filter(p=>p.nombre.toLowerCase().includes(s)||(p.categoria&&p.categoria.toLowerCase().includes(s))); },
@@ -846,8 +909,8 @@ function appData() {
                 }
             });
 
-            // 3. TOP PRODUCTOS (BARRAS - Filtrable)
-            const topData = d.topProducts.slice(0, 10); // O el límite que tengas configurado
+            // 3. TOP PRODUCTOS (Con formato CLP en Tooltip)
+            const topData = d.topProducts.slice(0, 10);
             charts['chartTopProd'] = new Chart(document.getElementById('chartTopProd'), {
                 type: 'bar',
                 data: {
@@ -862,11 +925,24 @@ function appData() {
                     indexAxis: 'y', 
                     maintainAspectRatio: false,
                     scales: {
-                        y: {
+                        x: { // Eje X (Valores)
                             ticks: {
-                                autoSkip: false, // <--- ESTA ES LA SOLUCIÓN
-                                maxRotation: 0,
-                                minRotation: 0
+                                callback: function(value) { return '$' + value.toLocaleString('es-CL'); } // <--- EJE CON PUNTOS
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed.x !== null) {
+                                        // Formato en el popup al pasar el mouse
+                                        label += context.parsed.x.toLocaleString('es-CL'); 
+                                    }
+                                    return label;
+                                }
                             }
                         }
                     }
