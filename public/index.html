@@ -507,14 +507,31 @@
                         <div class="card p-4 shadow-sm border-0 mb-3">
                             <h5>🎨 Personalización Visual</h5>
                             <div class="mb-3">
-                                <label>Logo App</label>
-                                <input type="file" class="form-control" @change="uploadConfig('app_logo', $event)">
-                                <small class="text-muted" x-text="config.app_logo ? '✅ Cargado' : 'Sin logo'"></small>
+                                <label class="form-label small fw-bold">Logo App</label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" @change="uploadConfig('app_logo', $event)">
+                                    <button class="btn btn-outline-danger" type="button" 
+                                            @click="deleteConfig('app_logo')" 
+                                            x-show="config.app_logo" 
+                                            title="Quitar Logo">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted" x-text="config.app_logo ? '✅ Logo personalizado activo' : '⚪ Sin logo (Por defecto)'"></small>
                             </div>
+
                             <div class="mb-3">
-                                <label>Favicon</label>
-                                <input type="file" class="form-control" @change="uploadConfig('app_favicon', $event)">
-                                <small class="text-muted" x-text="config.app_favicon ? '✅ Cargado' : 'Sin favicon'"></small>
+                                <label class="form-label small fw-bold">Favicon</label>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" @change="uploadConfig('app_favicon', $event)">
+                                    <button class="btn btn-outline-danger" type="button" 
+                                            @click="deleteConfig('app_favicon')" 
+                                            x-show="config.app_favicon" 
+                                            title="Quitar Favicon">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted" x-text="config.app_favicon ? '✅ Favicon activo' : '⚪ Sin favicon'"></small>
                             </div>
                         </div>
 
@@ -570,11 +587,26 @@
                                 </template>
                             </ul>
                         </div>
-                        
                         <div class="card p-4 shadow-sm border-danger">
                             <h5 class="text-danger">Zona de Peligro</h5>
-                            <p class="small text-muted">Esta acción borrará todas las ventas, productos y familias.</p>
-                            <button class="btn btn-danger w-100 fw-bold" @click="resetDatabase()">⚠️ BORRAR BASE DE DATOS</button>
+                            <div class="mb-4 pb-4 border-bottom border-danger-subtle">
+                                <h6 class="fw-bold text-warning-emphasis">🚀 Preparar para Producción</h6>
+                                <p class="small text-muted mb-2">
+                                    Esta opción borra <strong>Ventas, Familias y Bingos</strong>. 
+                                    <br>
+                                    <span class="text-success fw-bold">✅ Tus Productos y Usuarios NO se borrarán.</span>
+                                </p>
+                                <button class="btn btn-warning w-100 fw-bold" @click="resetProduccion()">
+                                    🧹 LIMPIAR DATOS DE PRUEBA
+                                </button>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-danger">☠️ Factory Reset</h6>
+                                <p class="small text-muted mb-2">Borra ABSOLUTAMENTE TODO (Incluyendo productos y usuarios).</p>
+                                <button class="btn btn-outline-danger w-100 btn-sm" @click="resetDatabase()">
+                                    Borrar Base de Datos Completa
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1035,6 +1067,27 @@ function appData() {
         async loadConfig() { try { const r=await this.fetchAuth('/api/config'); const d=await r.json(); if(d.menu_order)this.menuOrder=JSON.parse(d.menu_order); this.config=d; this.updateFavicon(); } catch(e){} },
         async saveConfig(k, v) { if(k==='menu_order')v=JSON.stringify(v); await this.fetchAuth('/api/config',{method:'POST',body:JSON.stringify({key:k,value:v})}); },
         async uploadConfig(k, e) { const fd=new FormData(); fd.append('key',k); fd.append('file',e.target.files[0]); const r=await fetch('/api/config/upload',{method:'POST',headers:{'Authorization':this.token},body:fd}); if(r.ok){const d=await r.json();this.config[k]=d.url;if(k==='app_favicon')this.updateFavicon();} },
+        async deleteConfig(key) {
+            if(!confirm("¿Estás seguro de quitar esta imagen y volver al estado original?")) return;
+            
+            try {
+                // Enviamos valor vacío '' al servidor para borrar
+                await this.saveConfig(key, '');
+                
+                // Actualizamos visualmente al instante
+                this.config[key] = '';
+                
+                // Si borramos el favicon, quitamos el icono de la pestaña navegador también
+                if (key === 'app_favicon') {
+                    document.getElementById('app-favicon').href = '';
+                }
+                
+                alert("Imagen eliminada correctamente.");
+            } catch (e) {
+                console.error(e);
+                alert("Error al eliminar.");
+            }
+        },
         async toggleConfigDeuda(e) {
             const isChecked = e.target.checked;
             const action = isChecked ? "MOSTRAR" : "OCULTAR";
@@ -1058,6 +1111,21 @@ function appData() {
         updateFavicon() { if(this.config.app_favicon) document.getElementById('app-favicon').href=this.config.app_favicon; },
         moveMenu(i,d) { const n=[...this.menuOrder],t=n[i]; n[i]=n[i+d]; n[i+d]=t; this.menuOrder=n; this.saveConfig('menu_order',this.menuOrder); },
         async resetDatabase() { if(confirm("¡PELIGRO!")) { await this.fetchAuth('/api/reset-database',{method:'POST'}); window.location.reload(); } },
+        async resetProduccion() {
+            if(!confirm("⚠️ ATENCIÓN ⚠️\n\nEstás a punto de borrar todas las VENTAS y FAMILIAS de prueba.\n\nLos Productos y Usuarios SE MANTENDRÁN intactos.\n\n¿Estás seguro de que quieres limpiar el sistema para salir a producción?")) return;
+
+            try {
+                const r = await this.fetchAuth('/api/reset-produccion', {method:'POST'});
+                if(r.ok) {
+                    alert("✅ ¡Sistema listo! Se han borrado las ventas y familias de prueba.");
+                    window.location.reload();
+                } else {
+                    throw new Error("Error en el servidor");
+                }
+            } catch (e) {
+                alert("Hubo un problema al limpiar los datos.");
+            }
+        },
         navigate(id) { if(id==='ventas')this.cargarVentas(); if(id==='familias')this.cargarDatos(); if(id==='stats')this.loadStatsView(); if(id==='usuarios')this.cargarUsuarios(); this.view=id; this.mobileMenuOpen=false; },
         
         // --- ESTADÍSTICAS ---

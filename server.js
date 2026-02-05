@@ -575,4 +575,33 @@ app.post('/api/config', requireAuth, requireAdmin, (req, res) => { const { key, 
 app.post('/api/config/upload', requireAuth, requireAdmin, upload.single('file'), (req, res) => { if(!req.file) return res.status(400).json({error: "No file"}); const url=('/uploads/'+req.file.filename).replace(/\\/g,"/"); db.prepare('INSERT OR REPLACE INTO configuracion (key, value) VALUES (?, ?)').run(req.body.key, url); res.json({success:true, url}); });
 app.post('/api/reset-database', requireAuth, requireAdmin, (req, res) => { try { const t=db.transaction(()=>{ db.prepare("DELETE FROM ventas").run(); db.prepare("DELETE FROM familias").run(); db.prepare("DELETE FROM productos").run(); db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('ventas','familias','productos')").run(); }); t(); res.json({success:true}); } catch(e){ res.status(500).json({error:e.message}); } });
 
+// --- LIMPIEZA PARA PRODUCCIÓN (Mantiene Productos y Usuarios) ---
+app.post('/api/reset-produccion', requireAuth, requireAdmin, (req, res) => {
+    try {
+        const t = db.transaction(() => {
+            // 1. Borrar Ventas e Historial
+            db.prepare("DELETE FROM ventas").run();
+            
+            // 2. Borrar Familias (Clientes)
+            db.prepare("DELETE FROM familias").run();
+            
+            // 3. Borrar Historial de Bingos Vendidos (IMPORTANTE para que no choquen los números)
+            try { db.prepare("DELETE FROM bingo_vendidos").run(); } catch(e){}
+
+            // 4. Reiniciar contadores de ID (Para que la venta 1 sea la N°1 de nuevo)
+            db.prepare("DELETE FROM sqlite_sequence WHERE name IN ('ventas', 'familias', 'bingo_vendidos')").run();
+
+            // 5. Reiniciar configuración de último cartón de bingo a 0
+            try { db.prepare("UPDATE configuracion SET value = '0' WHERE key = 'ultimo_carton'").run(); } catch(e){}
+        });
+        
+        t(); // Ejecutar transacción
+        console.log("🧹 Sistema limpiado para producción (Productos y Usuarios intactos).");
+        res.json({success:true});
+    } catch(e){
+        console.error("Error reset producción:", e);
+        res.status(500).json({error:e.message});
+    }
+});
+
 app.listen(PORT, () => console.log(`🚀 Servidor listo en puerto ${PORT}`));
