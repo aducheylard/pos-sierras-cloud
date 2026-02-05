@@ -788,6 +788,45 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="modalBingoManual" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square"></i> Ingresar Números de Cartón</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Ingresa el número impreso en cada cartón físico que estás entregando.</p>
+                    
+                    <template x-for="(item, indexItem) in bingoInputData" :key="indexItem">
+                        <div class="mb-3 p-2 border rounded bg-light">
+                            <strong class="d-block mb-2 text-primary" x-text="item.nombre"></strong>
+                            
+                            <div class="row g-2">
+                                <template x-for="(val, indexQty) in item.inputs" :key="indexQty">
+                                    <div class="col-6 col-md-4">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">#</span>
+                                            <input type="number" class="form-control fw-bold text-center" 
+                                                placeholder="1-1000"
+                                                x-model="bingoInputData[indexItem].inputs[indexQty]"
+                                                min="1" max="1000">
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="cancelarVentaBingo()">Cancelar Venta</button>
+                    <button type="button" class="btn btn-primary fw-bold" @click="confirmarNumerosBingo()">
+                        Confirmar y Vender <i class="bi bi-check-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 <script>
 let charts = {};
 const now = new Date();
@@ -945,37 +984,40 @@ function appData() {
             if (this.ventasPendientes.length === 0 || this.sincronizando || !this.online) return;
 
             this.sincronizando = true;
-            const pendientes = [...this.ventasPendientes]; // Copia para iterar
-            const fallidos = [];
-
-            // Notificación visual (Opcional)
-            // alert("Conexión recuperada. Subiendo ventas pendientes...");
+            const pendientes = [...this.ventasPendientes]; 
+            const fallidos = []; // Aquí guardaremos solo las que fallan por INTERNET
 
             for (const venta of pendientes) {
                 try {
-                    // Intentamos enviar al servidor
                     const r = await this.fetchAuth('/api/ventas', {
                         method: 'POST', 
                         body: JSON.stringify(venta)
                     });
 
-                    if (!r.ok) throw new Error("Error servidor");
-                    
-                    // Si funciona, genial, pasamos a la siguiente
+                    if (!r.ok) {
+                        // Si el servidor dice "Error: Cartón Repetido", NO la volvemos a intentar
+                        const err = await r.json();
+                        console.error("Venta rechazada por el servidor:", err);
+                        
+                        // Opcional: Avisar al usuario que una venta antigua falló
+                        // alert(`Una venta guardada falló: ${err.error}`);
+                    }
+                    // Si r.ok es true, no hacemos nada (significa que se subió bien)
+
                 } catch (e) {
-                    // Si falla, la mantenemos en la lista de fallidos
+                    // Solo si es error de CONEXIÓN (fetch falló), la mantenemos para después
+                    console.error("Error de conexión al subir:", e);
                     fallidos.push(venta);
                 }
             }
 
-            // Actualizamos la lista local con las que NO se pudieron subir
+            // Actualizamos la cola solo con las que fallaron por conexión
             this.ventasPendientes = fallidos;
             localStorage.setItem('pos_queue', JSON.stringify(this.ventasPendientes));
             this.sincronizando = false;
             
             if(this.ventasPendientes.length === 0) {
-                alert("✅ Todas las ventas pendientes se han sincronizado.");
-                this.cargarDatos(); // Recargar historial
+                this.cargarDatos();
             }
         },
         async loadConfig() { try { const r=await this.fetchAuth('/api/config'); const d=await r.json(); if(d.menu_order)this.menuOrder=JSON.parse(d.menu_order); this.config=d; this.updateFavicon(); } catch(e){} },
@@ -1286,57 +1328,123 @@ function appData() {
                 this.mobileCartOpen = false; // <--- Cierra el modal al vaciar
             } 
         },
+        // 1. MODIFICA TU FUNCIÓN procesarVenta ASÍ:
         async procesarVenta() {
-            // 1. Validaciones básicas
+            // A. Validaciones básicas
             if(!this.ventaActual.familiaId) return alert("⚠️ Por favor seleccione una Familia/Cliente.");
-            if(!confirm("¿Confirmar venta?")) return;
+            
+            // B. DETECCIÓN DE BINGO (NUEVO)
+            // Buscamos si hay productos que contengan "bingo" o "carton" en el nombre
+            const itemsBingo = this.carrito.filter(p => 
+                p.nombre.toLowerCase().includes('bingo') || 
+                p.nombre.toLowerCase().includes('carton')
+            );
 
-            // 2. Preparamos el objeto de datos
+            if (itemsBingo.length > 0) {
+                // SI HAY BINGOS: Preparamos los datos para el Modal
+                this.bingoInputData = itemsBingo.map(p => ({
+                    id: p.id,
+                    nombre: p.nombre,
+                    // Creamos espacios vacíos según la cantidad vendida para los inputs
+                    inputs: new Array(p.cantidad).fill('') 
+                }));
+
+                // Abrimos el modal y DETENEMOS la venta aquí hasta que confirmen
+                new bootstrap.Modal(document.getElementById('modalBingoManual')).show();
+                return; 
+            }
+
+            // SI NO HAY BINGOS: Flujo normal (Confirmar y Vender)
+            if(!confirm("¿Confirmar venta?")) return;
+            
+            // Llamamos a la función que realmente guarda los datos
+            this.ejecutarVentaReal();
+        },
+
+        // 2. AGREGA ESTAS FUNCIONES NUEVAS JUSTO DEBAJO:
+
+        cancelarVentaBingo() {
+            bootstrap.Modal.getInstance(document.getElementById('modalBingoManual')).hide();
+            this.bingoInputData = [];
+        },
+
+        confirmarNumerosBingo() {
+            // Validamos que no dejen números vacíos
+            for (let item of this.bingoInputData) {
+                if (item.inputs.some(val => val === '' || val === null)) {
+                    return alert(`⚠️ Faltan números para: ${item.nombre}`);
+                }
+            }
+
+            // Guardamos los números ingresados dentro del producto en el carrito
+            this.bingoInputData.forEach(bData => {
+                const productoEnCarro = this.carrito.find(p => p.id === bData.id);
+                if (productoEnCarro) {
+                    productoEnCarro.numeros_manuales = bData.inputs; 
+                }
+            });
+
+            // Cerramos el modal y procedemos a la venta real
+            bootstrap.Modal.getInstance(document.getElementById('modalBingoManual')).hide();
+            this.ejecutarVentaReal();
+        },
+
+        async ejecutarVentaReal() {
             const f = this.familias.find(x => x.id == this.ventaActual.familiaId);
+            
             const datosVenta = {
                 vendedor: this.currentUser.nombre,
                 familia: f,
                 total: this.totalCarrito,
                 metodo: this.ventaActual.metodo,
-                carrito: this.carrito,
-                fechaLocal: new Date().toISOString() // Importante para saber cuándo ocurrió realmente
+                carrito: this.carrito, 
+                fechaLocal: new Date().toISOString()
             };
 
-            // 3. Lógica Híbrida (Online / Offline)
-            let guardadoExitoso = false;
-
+            // --- NUEVA LÓGICA ROBUSTA ---
             if (navigator.onLine) {
                 try {
-                    // Intento A: Enviar directo al servidor
-                    const r = await this.fetchAuth('/api/ventas', {method: 'POST', body: JSON.stringify(datosVenta)});
+                    const r = await this.fetchAuth('/api/ventas', {
+                        method: 'POST', 
+                        body: JSON.stringify(datosVenta)
+                    });
+
                     if (r.ok) {
-                        guardadoExitoso = true;
-                        // Si había cosas pendientes, aprovechamos el impulso para subir
+                        // CASO 1: ÉXITO TOTAL
                         this.intentarSincronizar(); 
+                        // Limpieza UI
+                        this.carrito = [];
+                        this.ventaActual.familiaId = '';
+                        this.searchFamInput = '';
+                        this.mobileCartOpen = false;
+                        this.cargarDatos();
+                        return; // Salimos felices
+
                     } else {
-                        throw new Error("Error API");
+                        // CASO 2: ERROR DE VALIDACIÓN (Ej: Cartón Repetido)
+                        const errorData = await r.json();
+                        // Mostramos el error real que viene del servidor
+                        alert(errorData.error || "Error en el servidor");
+                        return; // ⛔ DETENEMOS TODO. No guardamos en offline porque la venta está mala.
                     }
+
                 } catch (e) {
-                    console.log("Fallo envío online, guardando localmente...");
-                    // Si falla el fetch, NO mostramos error, pasamos al plan B
+                    // CASO 3: ERROR DE RED (Solo entramos aquí si falla el fetch por internet)
+                    console.log("Fallo de red real:", e);
+                    // Solo en este caso dejamos pasar al código de abajo (Guardar Offline)
                 }
             }
 
-            // Plan B: Si no hubo éxito online (o no hay internet), guardar en LocalStorage
-            if (!guardadoExitoso) {
-                this.ventasPendientes.push(datosVenta);
-                localStorage.setItem('pos_queue', JSON.stringify(this.ventasPendientes));
-                alert("⚠️ Sin conexión estable. La venta se guardó en el teléfono y se subirá automáticamente cuando vuelva la señal.");
-            }
+            // CASO 4: MODO OFFLINE (Sin internet o fallo de red)
+            this.ventasPendientes.push(datosVenta);
+            localStorage.setItem('pos_queue', JSON.stringify(this.ventasPendientes));
+            alert("⚠️ Sin conexión. Venta guardada en el dispositivo.");
 
-            // 4. Limpieza UI (Ocurre siempre, sea online u offline)
+            // Limpieza UI Offline
             this.carrito = [];
             this.ventaActual.familiaId = '';
             this.searchFamInput = '';
             this.mobileCartOpen = false;
-            
-            // Solo recargamos datos si tenemos internet, sino mantenemos lo que hay
-            if(navigator.onLine) this.cargarDatos();
         },
         async reembolsarVenta(v){if(confirm("¿Anular?")){await this.fetchAuth(`/api/ventas/${v.id}/refund`,{method:'POST'});this.cargarVentas();}},
         async reenviarBoleta(v){if(confirm("¿Reenviar?")){await this.fetchAuth(`/api/ventas/${v.id}/resend`,{method:'POST'});alert("Enviado");}},
