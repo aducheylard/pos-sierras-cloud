@@ -575,7 +575,7 @@
             </div>
             <div x-show="view === 'familias'">
                 <div class="d-flex justify-content-between align-items-center mb-3"><h3>Familias</h3><button class="btn btn-primary" @click="toggleFormFamilia()"><i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span></button></div>
-                <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><input type="text" class="form-control" placeholder="Nombre" x-model="formFamilia.nombre"></div><div class="col-md-4"><input type="email" class="form-control" placeholder="Email" x-model="formFamilia.email"></div><div class="col-md-4"><input type="text" class="form-control" placeholder="Teléfono" x-model="formFamilia.telefono"></div><div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'"><input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda"></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarFamilia()">Guardar</button></div></div></div>
+                <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><input type="text" class="form-control" placeholder="Nombre *" x-model="formFamilia.nombre"></div><div class="col-md-4"><input type="email" class="form-control" placeholder="Email *" x-model="formFamilia.email"></div><div class="col-md-4"><input type="text" class="form-control" placeholder="Teléfono *" x-model="formFamilia.telefono"></div><div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'"><input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda"></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarFamilia()">Guardar</button></div></div></div>
                 <div class="table-responsive bg-white rounded shadow-sm">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -771,11 +771,11 @@
                         <input type="text" class="form-control" x-model="formFamiliaPOS.nombre" placeholder="Ej: Familia González" @keydown.enter="$refs.inputEmailPOS.focus()">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Email (Para recibir boletas)</label>
+                        <label class="form-label small fw-bold">Email (Para recibir boletas) <span class="text-danger">*</span></label>
                         <input x-ref="inputEmailPOS" type="email" class="form-control" x-model="formFamiliaPOS.email" placeholder="correo@ejemplo.com">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold">Teléfono</label>
+                        <label class="form-label small fw-bold">Teléfono <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" x-model="formFamiliaPOS.telefono" placeholder="+569...">
                     </div>
                 </div>
@@ -869,10 +869,10 @@ function appData() {
         },
 
         async guardarFamiliaDesdePOS() {
-            // Validar nombre
-            if (!this.formFamiliaPOS.nombre || this.formFamiliaPOS.nombre.trim() === '') {
-                return alert("El nombre es obligatorio");
-            }
+            // --- VALIDACIÓN ESTRICTA NUEVA ---
+            if (!this.formFamiliaPOS.nombre || !this.formFamiliaPOS.nombre.trim()) return alert("⚠️ El Nombre es obligatorio");
+            if (!this.formFamiliaPOS.email || !this.formFamiliaPOS.email.trim()) return alert("⚠️ El Email es obligatorio para enviar boletas");
+            if (!this.formFamiliaPOS.telefono || !this.formFamiliaPOS.telefono.trim()) return alert("⚠️ El Teléfono es obligatorio");
 
             try {
                 // 1. Guardar en servidor
@@ -1498,6 +1498,10 @@ function appData() {
         
         async guardarUsuario(){let u='/api/usuarios',m='POST';if(this.formUser.id){u+=`/${this.formUser.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formUser)}); this.toggleFormUsuario();this.cargarUsuarios();},
         async guardarFamilia() {
+            // --- VALIDACIÓN ESTRICTA NUEVA ---
+            if (!this.formFamilia.nombre || !this.formFamilia.nombre.trim()) return alert("⚠️ El Nombre es obligatorio");
+            if (!this.formFamilia.email || !this.formFamilia.email.trim()) return alert("⚠️ El Email es obligatorio");
+            if (!this.formFamilia.telefono || !this.formFamilia.telefono.trim()) return alert("⚠️ El Teléfono es obligatorio");
             let u = '/api/familias', m = 'POST';
             if (this.formFamilia.id) {
                 u += `/${this.formFamilia.id}`;

@@ -141,6 +141,9 @@ app.get('/api/familias', requireAuth, (req, res) => res.json(db.prepare('SELECT 
 app.post('/api/familias', requireAuth, (req, res) => {
     const {nombre, email, telefono} = req.body;
     
+    if (!nombre || !nombre.trim() || !email || !email.trim() || !telefono || !telefono.trim()) {
+        return res.status(400).json({ error: "⚠️ Todos los campos son obligatorios (Nombre, Email y Teléfono)." });
+    }
     // VALIDACIÓN DE DUPLICADO (NUEVO)
     // Buscamos si existe el nombre (ignorando mayúsculas/minúsculas)
     const existe = db.prepare('SELECT id FROM familias WHERE nombre = ? COLLATE NOCASE').get(nombre.trim());
@@ -162,6 +165,10 @@ app.put('/api/familias/:id', requireAuth, (req, res) => {
     const {nombre, email, telefono, deuda} = req.body;
     const id = req.params.id;
 
+    // --- BLOQUE NUEVO: VALIDACIÓN OBLIGATORIA ---
+    if (!nombre || !nombre.trim() || !email || !email.trim() || !telefono || !telefono.trim()) {
+        return res.status(400).json({ error: "⚠️ Todos los campos son obligatorios." });
+    }
     // VALIDACIÓN DE DUPLICADO AL EDITAR (NUEVO)
     // Buscamos si existe ESE nombre en OTRO ID diferente al mío
     const existe = db.prepare('SELECT id FROM familias WHERE nombre = ? AND id != ? COLLATE NOCASE').get(nombre.trim(), id);
