@@ -601,7 +601,20 @@
                 </div>
             </div>
             <div x-show="view === 'productos'">
-                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Productos</h3><button class="btn btn-primary" @click="toggleFormProducto()"><i class="bi" :class="showFormProd ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormProd ? 'Cerrar' : 'Nuevo'"></span></button></div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="m-0">📦 Productos</h3>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-warning" @click="abrirReordenar()">
+                            <i class="bi bi-arrow-down-up"></i> <span class="d-none d-md-inline">Reordenar</span>
+                        </button>
+                        
+                        <button class="btn btn-primary" @click="toggleFormProducto()">
+                            <i class="bi" :class="showFormProd ? 'bi-x-lg' : 'bi-plus-lg'"></i>
+                            <span x-text="showFormProd ? 'Cerrar' : 'Nuevo'"></span>
+                        </button>
+                    </div>
+                </div>
                 
                 <div x-show="showFormProd" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
                     <div class="row g-3">
@@ -708,7 +721,34 @@
             </div>
         </div>
     </div>
-
+    <div class="modal fade" id="modalReorder" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reordenar Productos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Usa las flechas para mover la prioridad. Arriba = Primero.</p>
+                    <div class="list-group">
+                        <template x-for="(p, index) in productosTemp" :key="p.id">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span x-text="p.nombre"></span>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="moverProducto(index, -1)" :disabled="index === 0"><i class="bi bi-arrow-up"></i></button>
+                                    <button class="btn btn-sm btn-outline-secondary" @click="moverProducto(index, 1)" :disabled="index === productosTemp.length - 1"><i class="bi bi-arrow-down"></i></button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @click="guardarOrden()">Guardar Orden</button>
+                </div>
+            </div>
+        </div>
+    </div>
 <script>
 let charts = {};
 const now = new Date();
@@ -732,7 +772,7 @@ function appData() {
         sincronizando: false,
         
         // Datos
-        productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {},
+        productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {}, productosTemp: [],
         
         // Carrito y Filtros
         ventaActual: { familiaId: '', metodo: 'Efectivo' },
@@ -866,7 +906,7 @@ function appData() {
         moveMenu(i,d) { const n=[...this.menuOrder],t=n[i]; n[i]=n[i+d]; n[i+d]=t; this.menuOrder=n; this.saveConfig('menu_order',this.menuOrder); },
         async resetDatabase() { if(confirm("¡PELIGRO!")) { await this.fetchAuth('/api/reset-database',{method:'POST'}); window.location.reload(); } },
         navigate(id) { if(id==='ventas')this.cargarVentas(); if(id==='familias')this.cargarDatos(); if(id==='stats')this.loadStatsView(); if(id==='usuarios')this.cargarUsuarios(); this.view=id; this.mobileMenuOpen=false; },
-
+        
         // --- ESTADÍSTICAS ---
         chartConfig: { 
             evolutionMetric: 'total', // 'total' ($) o 'tx' (cantidad)
@@ -1325,7 +1365,49 @@ function appData() {
         logout(){fetch('/api/logout',{method:'POST',headers:{'Authorization':this.token}});this.token=null;localStorage.clear();},
         async fetchAuth(u,o={}){if(!o.headers)o.headers={};o.headers['Authorization']=this.token;if(!o.body||!(o.body instanceof FormData))o.headers['Content-Type']='application/json';return fetch(u,o);},
         async cargarDatos(){try{this.productos=await(await this.fetchAuth('/api/productos')).json();this.familias=await(await this.fetchAuth('/api/familias')).json();}catch(e){}},
-        async cargarUsuarios(){this.usuarios=await(await this.fetchAuth('/api/usuarios')).json();}, async cargarVentas(){this.historialVentas=await(await this.fetchAuth('/api/ventas')).json();}, async cargarStats(){this.stats=await(await this.fetchAuth('/api/stats')).json();}
+        async cargarUsuarios(){this.usuarios=await(await this.fetchAuth('/api/usuarios')).json();}, async cargarVentas(){this.historialVentas=await(await this.fetchAuth('/api/ventas')).json();}, async cargarStats(){this.stats=await(await this.fetchAuth('/api/stats')).json();},
+        abrirReordenar() {
+            // Creamos una copia de los productos actuales para no afectar la vista principal hasta guardar
+            this.productosTemp = JSON.parse(JSON.stringify(this.productos));
+            new bootstrap.Modal(document.getElementById('modalReorder')).show();
+        },
+
+        moverProducto(index, direccion) {
+            // Lógica simple para intercambiar elementos en el array
+            const newIndex = index + direccion;
+            if (newIndex >= 0 && newIndex < this.productosTemp.length) {
+                const temp = this.productosTemp[newIndex];
+                this.productosTemp[newIndex] = this.productosTemp[index];
+                this.productosTemp[index] = temp;
+            }
+        },
+
+        async guardarOrden() {
+            // Preparamos el array para enviar al servidor: [{id: 1, orden: 0}, {id: 2, orden: 1}...]
+            const itemsOrdenados = this.productosTemp.map((p, index) => ({
+                id: p.id,
+                orden: index
+            }));
+
+            try {
+                const r = await this.fetchAuth('/api/productos/reorder', {
+                    method: 'POST',
+                    body: JSON.stringify({ items: itemsOrdenados })
+                });
+
+                if (r.ok) {
+                    // Cerramos modal y recargamos productos
+                    bootstrap.Modal.getInstance(document.getElementById('modalReorder')).hide();
+                    this.cargarDatos(); // Esto traerá la lista ordenada desde el servidor
+                    alert("Orden actualizado correctamente");
+                } else {
+                    alert("Error al guardar el orden");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión");
+            }
+        }
     }
 }
 </script>

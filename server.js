@@ -63,6 +63,7 @@ try { db.prepare("SELECT email FROM usuarios LIMIT 1").get(); } catch (e) { try{
 try { db.prepare("SELECT familia_id FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN familia_id INTEGER");}catch(err){} }
 try { db.prepare("SELECT saldo_historico FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN saldo_historico INTEGER DEFAULT 0");}catch(err){} }
 try { db.prepare("SELECT status FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN status TEXT DEFAULT 'ok'");}catch(err){} }
+try { db.prepare("SELECT orden FROM productos LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE productos ADD COLUMN orden INTEGER DEFAULT 9999");}catch(err){} }
 
 // Configuración por defecto
 const defaultConfig = { 
@@ -335,7 +336,7 @@ app.post('/api/ventas/:id/refund', requireAuth, requireAdmin, (req, res) => {
 });
 
 // --- PRODUCTOS (CORREGIDOS CON VALORES POR DEFECTO) ---
-app.get('/api/productos', requireAuth, (req, res) => res.json(db.prepare('SELECT * FROM productos').all()));
+app.get('/api/productos', requireAuth, (req, res) => res.json(db.prepare('SELECT * FROM productos ORDER BY orden ASC, nombre ASC').all()));
 
 app.post('/api/productos', requireAuth, upload.single('foto'), (req, res) => { 
     console.log("📦 POST /api/productos - Creando:", req.body.nombre); 
@@ -377,6 +378,21 @@ app.put('/api/productos/:id', requireAuth, upload.single('foto'), (req, res) => 
 
 app.delete('/api/productos/:id', requireAuth, (req, res) => { db.prepare('DELETE FROM productos WHERE id=?').run(req.params.id); res.json({success:true}); });
 
+app.post('/api/productos/reorder', requireAuth, requireAdmin, (req, res) => {
+    const { items } = req.body; // Esperamos un array [{id: 1, orden: 0}, {id: 5, orden: 1}...]
+    try {
+        const t = db.transaction(() => {
+            items.forEach(item => {
+                db.prepare('UPDATE productos SET orden = ? WHERE id = ?').run(item.orden, item.id);
+            });
+        });
+        t();
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Error al reordenar" });
+    }
+});
 
 // --- ESTADÍSTICAS Y EXCEL ---
 app.get('/api/stats', requireAuth, (req, res) => {
