@@ -230,12 +230,21 @@
                                         <span class="input-group-text bg-white border-0" x-show="ventaActual.familiaId"><i class="bi bi-check-circle-fill text-success fs-5"></i></span>
                                     </div>
                                     <div class="dropdown-list shadow-lg rounded mt-1 border-0" x-show="showFamList">
+                                        <div class="dropdown-item d-flex align-items-center py-2 text-primary bg-light border-bottom" 
+                                            style="cursor: pointer;" 
+                                            @click="abrirModalFamiliaPOS()">
+                                            <i class="bi bi-plus-circle-fill me-2"></i> 
+                                            <strong>Crear nueva familia</strong>
+                                        </div>
                                         <template x-for="f in familiasFiltradas" :key="f.id">
                                             <div class="dropdown-item d-flex justify-content-between align-items-center py-2" @click="seleccionarFamilia(f)">
                                                 <span x-text="f.nombre" class="fw-bold text-dark"></span>
                                                 <span class="badge bg-light text-dark border" x-text="'ID ' + f.id"></span>
                                             </div>
                                         </template>
+                                        <div x-show="familiasFiltradas.length === 0" class="p-3 text-center text-muted small">
+                                            No se encontraron coincidencias.
+                                        </div>
                                     </div>
                                 </div>
 
@@ -749,6 +758,36 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="modalFamiliaPOS" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus-fill"></i> Nueva Familia</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Nombre Familia <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" x-model="formFamiliaPOS.nombre" placeholder="Ej: Familia González" @keydown.enter="$refs.inputEmailPOS.focus()">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Email (Para recibir boletas)</label>
+                        <input x-ref="inputEmailPOS" type="email" class="form-control" x-model="formFamiliaPOS.email" placeholder="correo@ejemplo.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Teléfono</label>
+                        <input type="text" class="form-control" x-model="formFamiliaPOS.telefono" placeholder="+569...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success fw-bold" @click="guardarFamiliaDesdePOS()">
+                        <i class="bi bi-check-lg"></i> Guardar y Seleccionar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 <script>
 let charts = {};
 const now = new Date();
@@ -773,7 +812,67 @@ function appData() {
         
         // Datos
         productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {}, productosTemp: [],
-        
+        formFamiliaPOS: { nombre: '', email: '', telefono: '' },
+
+        // --- FUNCIONES NUEVAS PARA FAMILIA POS ---
+
+        abrirModalFamiliaPOS() {
+            // 1. Prellenamos el nombre con lo que haya escrito el usuario en el buscador (si escribió algo)
+            this.formFamiliaPOS = {
+                nombre: this.searchFamInput || '', 
+                email: '', 
+                telefono: ''
+            };
+            // 2. Cerramos la lista desplegable del carrito
+            this.showFamList = false;
+            // 3. Abrimos el modal
+            new bootstrap.Modal(document.getElementById('modalFamiliaPOS')).show();
+        },
+
+        async guardarFamiliaDesdePOS() {
+            // Validar nombre
+            if (!this.formFamiliaPOS.nombre || this.formFamiliaPOS.nombre.trim() === '') {
+                return alert("El nombre es obligatorio");
+            }
+
+            try {
+                // 1. Guardar en servidor
+                const r = await this.fetchAuth('/api/familias', {
+                    method: 'POST',
+                    body: JSON.stringify(this.formFamiliaPOS)
+                });
+
+                if (r.ok) {
+                    // 2. Recargar lista de familias (para que aparezca la nueva)
+                    await this.cargarDatos();
+
+                    // 3. Buscar la familia recién creada para seleccionarla automáticamente
+                    // Como el backend no devuelve el ID al crear, la buscamos por nombre
+                    const nombreBuscado = this.formFamiliaPOS.nombre.trim().toLowerCase();
+                    const nuevaFamilia = this.familias.find(f => f.nombre.toLowerCase() === nombreBuscado);
+
+                    if (nuevaFamilia) {
+                        this.seleccionarFamilia(nuevaFamilia); // ¡Esto la pone en el carrito!
+                    }
+
+                    // 4. Cerrar Modal y limpiar
+                    const modalEl = document.getElementById('modalFamiliaPOS');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    modalInstance.hide();
+                    
+                    // Mensaje discreto (opcional)
+                    // alert("Familia creada y seleccionada"); 
+
+                } else {
+                    const errorData = await r.json();
+                    alert(errorData.error || "Error al crear familia");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión");
+            }
+        },
+
         // Carrito y Filtros
         ventaActual: { familiaId: '', metodo: 'Efectivo' },
         filters: { search: '', metodo: '', startDate: '', endDate: '', vendedor: '', sort: 'desc' },

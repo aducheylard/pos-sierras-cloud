@@ -88,7 +88,7 @@ const generarHtmlBienvenida = (nombre, vendedor, deuda) => {
             
             <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <strong>Estado Inicial:</strong><br>
-                ${deuda > 0 ? `<span style="color: #dc3545;">Deuda pendiente: $${formatCLP(deuda)}</span>` : '<span style="color: #198754;">Sin deuda (Cuenta al día)</span>'}
+                ${deuda > 0 ? `<span style="color: #dc3545;">Deuda pendiente: $${formatCLP(deuda)}</span>` : '<span style="color: #198754;">Cuenta inicial en $0.</span>'}
             </div>
             
             <p style="font-size: 12px; color: #999;">Cuenta creada por: ${vendedor}</p>
