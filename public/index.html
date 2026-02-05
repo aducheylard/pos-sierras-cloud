@@ -387,31 +387,37 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100">
-                            <small class="text-muted fw-bold">Ingresos (Efectivo + Cuenta familiar)</small>
-                            <h4 class="my-1 text-success" x-text="'$' + formatMoney(stats.ingresosTotales)"></h4>
+                            <small class="text-dark fw-bold">Ingresos (Efectivo + Cuenta familiar)</small>
+                            <h4 class="my-1 text-success fw-bold" x-text="'$' + formatMoney(stats.ingresosTotales)"></h4>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100">
-                            <small class="text-muted fw-bold">Deuda total cuenta familiar</small>
-                            <h4 class="my-1 text-danger" x-text="'$' + formatMoney(stats.deudaTotal)"></h4>
+                            <small class="text-dark fw-bold">Solo Efectivo (Caja)</small>
+                            <h4 class="my-1 text-success fw-bold" x-text="'$' + formatMoney(stats.efectivoTotal || 0)"></h4>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100">
-                            <small class="text-muted fw-bold">Cantidad de ventas</small>
+                            <small class="text-dark fw-bold">Deuda total cuenta familiar</small>
+                            <h4 class="my-1 text-danger fw-bold" x-text="'$' + formatMoney(stats.deudaTotal)"></h4>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <div class="card p-2 border-0 shadow-sm text-center h-100">
+                            <small class="text-dark fw-bold">Cantidad de ventas</small>
                             <h4 class="my-1" x-text="stats.totalVentas || 0"></h4>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100">
-                            <small class="text-muted fw-bold">Items vendidos</small>
+                            <small class="text-dark fw-bold">Items vendidos</small>
                             <h4 class="my-1 text-warning" x-text="stats.itemsVendidos || 0"></h4>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100 bg-warning-subtle">
-                            <small class="text-dark fw-bold">Mejor día por ingresos </small>
+                            <small class="text-dark fw-bold">Día con mayores ingresos </small>
                             <div class="lh-1 mt-1"><small x-text="bestDayMoney.date"></small>
                                 <div class="fw-bold" x-text="'$' + formatMoney(bestDayMoney.total)"></div>
                             </div>
@@ -419,7 +425,7 @@
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="card p-2 border-0 shadow-sm text-center h-100 bg-info-subtle">
-                            <small class="text-dark fw-bold">Mejor día por cantidad de ventas</small>
+                            <small class="text-dark fw-bold">Día con mayores ventas</small>
                             <div class="lh-1 mt-1">
                                 <small x-text="bestDayTx.date"></small>
                                 <div class="fw-bold" x-text="(bestDayTx.count || 0) + ' ventas'"></div>
@@ -429,6 +435,38 @@
                 </div>
 
                 <div class="row g-3">
+
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h6 class="m-0 fw-bold">🏆 Ranking Detallado de Productos</h6>
+                                
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-muted d-none d-md-inline">Ordenar por:</small>
+                                    <select class="form-select form-select-sm w-auto" x-model="chartConfig.topProdMetric" @change="renderCharts()">
+                                        <option value="cantidad">Cantidad Vendida</option>
+                                        <option value="total">Dinero Generado</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="card-body p-0 table-responsive">
+                                <table class="table table-striped table-hover mb-0 align-middle">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th style="width: 50px;" class="text-center">#</th>
+                                            <th>Producto</th>
+                                            <th class="text-center">Cant.</th>
+                                            <th class="text-end pe-3">Total ($)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableTopProdBody">
+                                        </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white d-flex justify-content-between">
@@ -448,34 +486,8 @@
 
                     <div class="col-md-6">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <h6 class="m-0 fw-bold">🏆 Top productos vendidos</h6>
-                                <div class="d-flex gap-1">
-                                    <select class="form-select form-select-sm" x-model="chartConfig.topProdMetric" @change="renderCharts()"><option value="cantidad">Por Cantidad</option><option value="total">Por Dinero</option></select>
-                                </div>
-                            </div>
-                            <div class="card-body"><canvas id="chartTopProd"></canvas></div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
                             <div class="card-header bg-white"><h6 class="m-0 fw-bold">👨‍👩‍👧‍👦 Top 5 Familias con más compras</h6></div>
                             <div class="card-body"><canvas id="chartFamilies"></canvas></div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">⏰ Horarios con mayores ventas</h6></div>
-                            <div class="card-body"><canvas id="chartHours"></canvas></div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white"><h6 class="m-0 fw-bold">📂 Categorías ($)</h6></div>
-                            <div class="card-body d-flex justify-content-center"><canvas id="chartCats"></canvas></div>
                         </div>
                     </div>
 
@@ -1060,6 +1072,16 @@ function appData() {
             const url = `/api/stats?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
             this.stats = await (await this.fetchAuth(url)).json();
             
+            // Calculamos el total de Efectivo buscando dentro del gráfico de métodos de pago
+            let cash = 0;
+            if (this.stats.charts && this.stats.charts.salesByMethod) {
+                // Buscamos el método que se llame 'Efectivo'
+                const found = this.stats.charts.salesByMethod.find(x => x.metodo_pago === 'Efectivo');
+                if (found) cash = found.total;
+            }
+            // Guardamos el valor para usarlo en el HTML
+            this.stats.efectivoTotal = cash;
+
             // CÁLCULO DE DÍAS RÉCORD
             this.bestDayMoney = { date: '-', total: 0 };
             this.bestDayTx = { date: '-', count: 0 };
@@ -1195,35 +1217,40 @@ function appData() {
                 }
             });
 
-            // 3. TOP PRODUCTOS (BARRAS HORIZONTALES)
-            const topData = d.topProducts.slice(0, 10);
-            const isMoney = this.chartConfig.topProdMetric === 'total';
+            // 3. TOP PRODUCTOS (SOLO TABLA)
+            let topData = [...d.topProducts]; // Copiamos el array para no romper nada
+            const metric = this.chartConfig.topProdMetric; // 'cantidad' o 'total'
             
-            createChart('chartTopProd', {
-                type: 'bar',
-                data: {
-                    labels: topData.map(x => x.nombre),
-                    datasets: [{
-                        label: isMoney ? 'Dinero ($)' : 'Unidades',
-                        data: topData.map(x => x[this.chartConfig.topProdMetric]),
-                        backgroundColor: isMoney ? '#20c997' : '#fd7e14',
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', maintainAspectRatio: false,
-                    layout: { padding: { right: 50 } }, // Espacio extra a la derecha para que quepa el texto
-                    scales: { 
-                        x: { ticks: { callback: (v) => isMoney ? '$' + v.toLocaleString('es-CL') : v } } 
-                    },
-                    plugins: {
-                        tooltip: { callbacks: { label: (c) => (c.dataset.label || '') + ': ' + (isMoney ? '$' : '') + (c.parsed.x||0).toLocaleString('es-CL') } },
-                        datalabels: {
-                            ...barDatalabels,
-                            formatter: (value) => isMoney ? '$' + value.toLocaleString('es-CL') : value
-                        }
-                    }
-                }
-            });
+            // ORDENAMIENTO DINÁMICO
+            // Re-ordenamos la lista según lo que el usuario seleccionó en el dropdown
+            topData.sort((a, b) => b[metric] - a[metric]);
+
+            // LLENADO DE TABLA
+            const tableBody = document.getElementById('tableTopProdBody');
+            if (tableBody) {
+                tableBody.innerHTML = topData.map((item, index) => `
+                    <tr>
+                        <td class="fw-bold text-muted text-center">${index + 1}</td>
+                        <td>
+                            <div class="fw-bold text-dark">${item.nombre}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge ${metric === 'cantidad' ? 'bg-primary' : 'bg-secondary'} rounded-pill">
+                                ${item.cantidad}
+                            </span>
+                        </td>
+                        <td class="text-end fw-bold pe-3 ${item.total > 0 ? 'text-success' : 'text-muted'}">
+                            $${(item.total || 0).toLocaleString('es-CL')}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+            
+            // Eliminamos el gráfico antiguo de la memoria si existía
+            if(this.charts['chartTopProd']) {
+                this.charts['chartTopProd'].destroy();
+                delete this.charts['chartTopProd'];
+            }
 
             // 4. TOP FAMILIAS (BARRAS VERTICALES)
             const topFam = d.salesByFamily.slice(0, 5);
@@ -1240,31 +1267,6 @@ function appData() {
                     plugins: { datalabels: barDatalabels }
                 }
             });
-
-            // 5. HORARIOS PUNTA (BARRAS VERTICALES)
-            createChart('chartHours', {
-                type: 'bar',
-                data: {
-                    labels: d.salesByHour.map(x => x.hora + ':00'),
-                    datasets: [{ label: 'Ventas (#)', data: d.salesByHour.map(x => x.count), backgroundColor: '#6610f2' }]
-                }, 
-                options: { 
-                    maintainAspectRatio: false,
-                    layout: { padding: { top: 20 } }, // Espacio arriba
-                    plugins: { datalabels: barDatalabels }
-                }
-            });
-
-            // 6. CATEGORÍAS (TORTA)
-            createChart('chartCats', {
-                type: 'pie',
-                data: {
-                    labels: d.topCategories.map(x => x.nombre),
-                    datasets: [{ data: d.topCategories.map(x => x.total), backgroundColor: ['#0d6efd', '#dc3545', '#ffc107', '#198754', '#6610f2'] }]
-                },
-                options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, datalabels: pieDatalabels } }
-            });
-
             // 7. VENDEDORES (DONA)
             createChart('chartSeller', {
                 type: 'doughnut',

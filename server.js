@@ -505,8 +505,7 @@ app.get('/api/stats', requireAuth, (req, res) => {
     // 4. Ordenamiento de Arrays JS
     const topProducts = Object.entries(productStats)
         .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad, total: data.total }))
-        .sort((a, b) => b.cantidad - a.cantidad) // Orden por cantidad por defecto
-        .slice(0, 20);
+        .sort((a, b) => b.cantidad - a.cantidad); // Orden por cantidad por defecto
 
     const topCategories = Object.entries(categoryStats)
         .map(([nombre, total]) => ({ nombre, total }))
