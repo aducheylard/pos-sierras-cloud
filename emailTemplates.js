@@ -6,8 +6,13 @@ const formatCLP = (num) => {
 const generarHtmlBoleta = (data, carrito) => {
     const filas = carrito.map(i => `
         <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${i.nombre} <small style="color:#777;">(x${i.cantidad})</small></td>
-            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">$${formatCLP(i.precio * i.cantidad)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">
+                ${i.nombre} <small style="color:#777;">(x${i.cantidad})</small>
+                ${i.numeros_bingo ? `<br><strong style="color: #d63384; font-size: 12px;">🎟️ Cartones: ${i.numeros_bingo}</strong>` : ''}
+            </td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">
+                $${formatCLP(i.precio * i.cantidad)}
+            </td>
         </tr>
     `).join('');
 
@@ -101,7 +106,10 @@ const generarHtmlAnulacion = (venta, carrito) => {
     const fecha = new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' });
     const filas = carrito.map(i => `
         <tr style="border-bottom: 1px solid #f5c6cb;">
-            <td style="padding: 10px; color: #721c24;">${i.nombre}</td>
+            <td style="padding: 10px; color: #721c24;">
+                ${i.nombre}
+                ${i.numeros_bingo ? `<br><span style="font-size:11px; background:#fff; border:1px solid #d63384; color:#d63384; padding:2px 4px; border-radius:4px;">🎟️ Cartones: ${i.numeros_bingo}</span>` : ''}
+                </td>
             <td style="padding: 10px; text-align: center; color: #721c24;">${i.cantidad}</td>
             <td style="padding: 10px; text-align: right; font-weight: bold; color: #721c24;">$${formatCLP(i.precio * i.cantidad)}</td>
         </tr>`).join('');

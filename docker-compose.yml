@@ -61,5 +61,5 @@ services:
       - ./data/sierras_db.db:/app/sierras_db.db # Base de datos
       - ./public:/app/public # Carpeta con los .html
       - ./server.js:/app/server.js
-      - ./emailTemplate.js:/app/emailTemplate.js
+      - ./emailTemplates.js:/app/emailTemplates.js
 

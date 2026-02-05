@@ -334,34 +334,49 @@ app.post('/api/ventas/:id/resend', requireAuth, (req, res) => {
         .catch(e => res.status(500).json({error:e.message}));
 });
 
-app.post('/api/ventas/:id/refund', requireAuth, requireAdmin, (req, res) => {
+app.post('/api/ventas/:id/refund', requireAuth, requireAdmin, async (req, res) => {
     const v = db.prepare('SELECT * FROM ventas WHERE id = ?').get(req.params.id);
-    if(!v || v.status === 'reembolsado') return res.status(400).json({error: "Error"});
+    if(!v || v.status === 'reembolsado') return res.status(400).json({error: "Error: Venta no encontrada o ya anulada"});
     
+    // Transacción de Anulación y Liberación de Stock/Bingo
     const t = db.transaction(() => {
-        // 1. Marcar venta como anulada
+        // 1. Marcar anulada
         db.prepare("UPDATE ventas SET status = 'reembolsado' WHERE id = ?").run(v.id);
         
         // 2. Devolver Stock
-        try { JSON.parse(v.detalle_json).forEach(i => db.prepare('UPDATE productos SET stock = stock + ? WHERE id = ?').run(i.cantidad, i.id)); } catch(e){}
+        try { 
+            const detalle = JSON.parse(v.detalle_json);
+            detalle.forEach(i => db.prepare('UPDATE productos SET stock = stock + ? WHERE id = ?').run(i.cantidad, i.id)); 
+        } catch(e){}
         
-        // 3. Devolver Dinero a la Familia
+        // 3. Devolver Dinero (Si fue con cuenta)
         if(v.metodo_pago === 'Cuenta' && v.familia_id) {
             db.prepare('UPDATE familias SET deuda = deuda - ? WHERE id = ?').run(v.total, v.familia_id);
         }
 
-        // 4. LIBERAR CARTONES DE BINGO (NUEVO 🔓)
-        // Borramos los números asociados a esta venta para que se puedan vender de nuevo
+        // 4. LIBERAR NÚMEROS DE BINGO
         db.prepare('DELETE FROM bingo_vendidos WHERE venta_id = ?').run(v.id);
     });
 
     try { 
         t();
-        res.json({ success: true });
+        res.json({ success: true }); // Respondemos rápido al usuario
 
-        // Enviar correo de anulación (Opcional, si lo tienes implementado)
+        // 5. ENVÍO DE CORREO DE ANULACIÓN
         if(v.familia_email) {
-            // ... lógica de correo de anulación ...
+            // Recuperamos el detalle (que ya trae los números de bingo guardados)
+            let detalle = [];
+            try { detalle = JSON.parse(v.detalle_json); } catch(e){}
+
+            // Buscamos copias ocultas
+            const configCopias = db.prepare("SELECT value FROM configuracion WHERE key = 'email_copias'").get();
+            const listaCopias = configCopias ? configCopias.value : '';
+
+            // Generamos HTML
+            const html = generarHtmlAnulacion(v, detalle);
+
+            // Enviamos (sin await para no bloquear, o con await si prefieres asegurar el envío)
+            enviarEmail(v.familia_email, `Anulación Venta #${v.id} - Sierras`, html, listaCopias);
         }
 
     } catch(e) { 
