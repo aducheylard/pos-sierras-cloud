@@ -21,6 +21,7 @@ services:
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - ./backups:/app/backups
     restart: always
 
   # --- TU APP POS ---

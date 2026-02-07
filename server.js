@@ -638,4 +638,66 @@ app.post('/api/reset-produccion', requireAuth, requireAdmin, (req, res) => {
     }
 });
 
+// ==================================================
+// 🛡️ SISTEMA DE RESPALDO (Estrategia 24h / 5min)
+// ==================================================
+const BACKUP_DIR = './backups';
+
+// CONFIGURACIÓN:
+// Intervalo: 5 minutos
+// Retención: 288 archivos (12 por hora * 24 horas)
+const INTERVALO_MINUTOS = 5;
+const MAX_BACKUPS = 288; 
+
+if (!fs.existsSync(BACKUP_DIR)){
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+}
+
+async function realizarBackup() {
+    // Formato de fecha ordenable y legible: AAAA-MM-DD_HH-mm
+    const now = new Date();
+    // Ajuste manual simple para hora Chile (UTC-3 o -4 según corresponda, o usar local del server)
+    const timestamp = now.toLocaleString('es-CL', { timeZone: 'America/Santiago' })
+                        .replace(/[: ]/g, '-').replace(/,/g, '');
+    
+    const backupName = `backup_sierras_${timestamp}.db`;
+    const backupPath = path.join(BACKUP_DIR, backupName);
+
+    try {
+        // 1. Verificar tamaño (Alerta preventiva si crece de golpe)
+        const stats = fs.statSync('sierras_db.db');
+        const dbSizeMB = stats.size / (1024 * 1024);
+        
+        // 2. BACKUP HOT-SAFE (No detiene el sistema)
+        await db.backup(backupPath);
+        
+        // Solo logueamos si hubo error o si es el backup de la hora en punto (para no ensuciar el log)
+        if(now.getMinutes() % 30 === 0) {
+            console.log(`💾 Checkpoint ${timestamp}: ${dbSizeMB.toFixed(2)} MB`);
+        }
+
+        // 3. ROTACIÓN (Borrar los viejos)
+        const archivos = fs.readdirSync(BACKUP_DIR)
+            .filter(f => f.startsWith('backup_sierras_') && f.endsWith('.db'))
+            .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtime.getTime() }))
+            .sort((a, b) => b.time - a.time); // Nuevos primero
+
+        if (archivos.length > MAX_BACKUPS) {
+            const aBorrar = archivos.slice(MAX_BACKUPS);
+            aBorrar.forEach(archivo => {
+                fs.unlinkSync(path.join(BACKUP_DIR, archivo.name));
+            });
+            // console.log(`🧹 Limpieza automática realizada.`);
+        }
+
+    } catch (e) {
+        console.error("❌ ERROR CRÍTICO EN RESPALDO:", e.message);
+    }
+}
+
+// Iniciar Reloj
+setInterval(realizarBackup, INTERVALO_MINUTOS * 60 * 1000);
+
+// Primer backup al iniciar (espera 5 segundos para no chocar con el inicio de DB)
+setTimeout(realizarBackup, 5000);
 app.listen(PORT, () => console.log(`🚀 Servidor listo en puerto ${PORT}`));
