@@ -21,7 +21,6 @@ services:
     volumes:
       - "./letsencrypt:/letsencrypt"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - ./backups:/app/backups
     restart: always
 
   # --- TU APP POS ---
@@ -63,4 +62,5 @@ services:
       - ./public:/app/public # Carpeta con los .html
       - ./server.js:/app/server.js
       - ./emailTemplates.js:/app/emailTemplates.js
+      - ./backups:/app/backups
 
