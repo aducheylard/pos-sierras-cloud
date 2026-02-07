@@ -15,7 +15,20 @@
     <style>
         body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
         .login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: #2c3e50; }
-        .sidebar { height: 100vh; position: fixed; top: 0; left: 0; background: #212529; color: white; z-index: 1050; width: 250px; overflow-x: hidden; white-space: nowrap; transition: width 0.2s ease-in-out; }
+        .sidebar { 
+            height: 100vh; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            background: #212529; 
+            color: white; 
+            z-index: 3000; 
+            width: 250px; 
+            overflow-x: hidden; 
+            overflow-y: auto; /* <--- ESTO ES LO NUEVO: Permite bajar si el menú es muy largo */
+            white-space: nowrap; 
+            transition: width 0.2s ease-in-out; 
+        }
         .sidebar.collapsed { width: 80px; }
         .sidebar.collapsed .nav-text, .sidebar.collapsed .sidebar-header-text { display: none; }
         .sidebar.collapsed .nav-link { justify-content: center; padding-left: 0; padding-right: 0; }
@@ -110,7 +123,7 @@
                 </template>
             </ul>
 
-            <div class="mt-auto p-3 border-top border-secondary">
+            <div class="mt-auto p-3 border-top border-secondary pb-5 mb-5">
                 <button class="btn btn-outline-light w-100 btn-sm" @click="logout()">
                     <i class="bi bi-box-arrow-left"></i> <span class="nav-text">Salir</span>
                 </button>
@@ -895,7 +908,7 @@ function appData() {
         
         // Datos
         productos: [], familias: [], historialVentas: [], usuarios: [], carrito: [], stats: {}, productosTemp: [],
-        formFamiliaPOS: { nombre: '', email: '', telefono: '' },
+        formFamiliaPOS: { nombre: '', email: '', telefono: '+569' },
 
         // --- FUNCIONES NUEVAS PARA FAMILIA POS ---
 
@@ -904,7 +917,7 @@ function appData() {
             this.formFamiliaPOS = {
                 nombre: this.searchFamInput || '', 
                 email: '', 
-                telefono: ''
+                telefono: '+569'
             };
             // 2. Cerramos la lista desplegable del carrito
             this.showFamList = false;
@@ -1522,7 +1535,13 @@ function appData() {
         // --- FORMULARIOS ---
         toggleFormUsuario(){this.showFormUser=!this.showFormUser;if(!this.showFormUser)this.formUser={role:'vendedor'};},
         prepararEdicionUsuario(u){this.formUser={...u,password:''};this.showFormUser=true;},
-        toggleFormFamilia(){this.showFormFamilia=!this.showFormFamilia;if(!this.showFormFamilia)this.formFamilia={deuda:0};},
+        ttoggleFormFamilia() {
+            this.showFormFamilia = !this.showFormFamilia;
+            if (!this.showFormFamilia) {
+                // Al cerrar/limpiar, dejamos el +569 listo
+                this.formFamilia = { deuda: 0, telefono: '+569' }; 
+            }
+        },
         prepararEdicionFamilia(f){this.formFamilia={...f};this.showFormFamilia=true;},
 
         // --- [AQUÍ ESTÁ LA MAGIA QUE ARREGLA LAS CATEGORÍAS] ---

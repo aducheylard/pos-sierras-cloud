@@ -42,7 +42,7 @@ const generarHtmlBoleta = (data, carrito) => {
             <div style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px;">
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; justify-content: space-between;">
                     <li>🧾 <strong>N° Boleta:</strong> ${data.id}</li>
-                    <li>📅 <strong>Fecha:</strong> ${new Date(data.fecha).toLocaleDateString('es-CL')}</li>
+                    <li>📅 <strong>Fecha:</strong> ${new Date(data.fecha).toLocaleString('es-CL', { timeZone: 'America/Santiago' })}</li>
                 </ul>
                 <div style="margin-top: 5px;">👤 <strong>Vendedor:</strong> ${data.vendedor}</div>
                 <div style="margin-top: 5px; color: #555;">
