@@ -13,6 +13,18 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
+        /* ARREGLO DESFASE TABLAS */
+        .table-responsive {
+            transform: translateZ(0); /* Obliga al navegador a recalcular posiciones */
+            position: relative;
+            z-index: 1;
+        }
+        tbody tr {
+            position: relative; /* Asegura que cada fila tenga su propia capa */
+        }
+        thead.sticky-top {
+            z-index: 5 !important; /* Asegura que la cabecera no tape los clics */
+        }
         body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
         .login-screen { height: 100vh; display: flex; align-items: center; justify-content: center; background: #2c3e50; }
         .sidebar { 
@@ -67,6 +79,34 @@
         .suggestion-item:hover { background-color: #f8f9fa; color: #0d6efd; }
         .reembolsado { text-decoration: line-through; opacity: 0.6; background-color: #ffebee !important; }
         .filter-label { font-size: 0.75rem; color: #6c757d; margin-bottom: 2px; display: block; }
+        /* --- PARCHE ANTI-DESFASE DE TABLAS --- */
+        .table-responsive {
+            /* Crea un contexto de apilamiento nuevo para contener la tabla */
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Forzamos a las filas y celdas a NO tener posición relativa */
+        /* Esto es lo que suele causar el error de cálculo del mouse */
+        .table tbody tr, 
+        .table tbody td {
+            position: static !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Si usas sticky-top, aseguramos que sea el único con posición */
+        thead.sticky-top th {
+            position: sticky !important;
+            top: 0;
+            z-index: 1020; /* Por encima del contenido, por debajo del menú lateral */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Sombra suave para separar */
+        }
+
+        /* Opcional: Arreglo para bordes en Safari/Mobile */
+        table {
+            border-collapse: collapse !important;
+        }
     </style>
 </head>
 <body x-data="appData()" x-init="initApp()">
@@ -627,12 +667,88 @@
 
             <div x-show="view === 'usuarios'">
                 <div class="d-flex justify-content-between align-items-center mb-3"><h3>Usuarios</h3><button class="btn btn-primary" @click="toggleFormUsuario()"><i class="bi" :class="showFormUser ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormUser ? 'Cerrar' : 'Nuevo'"></span></button></div>
-                <div x-show="showFormUser" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><label>Usuario</label><input type="text" class="form-control" x-model="formUser.username"></div><div class="col-md-4"><label>Email</label><input type="email" class="form-control" x-model="formUser.email"></div><div class="col-md-4"><label>Nombre</label><input type="text" class="form-control" x-model="formUser.nombre"></div><div class="col-md-4"><label>Clave</label><input type="password" class="form-control" x-model="formUser.password"></div><div class="col-md-4"><label>Rol</label><select class="form-select" x-model="formUser.role"><option value="vendedor">Vendedor</option><option value="admin">Admin</option></select></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarUsuario()">Guardar</button></div></div></div>
-                <div class="table-responsive bg-white rounded shadow-sm"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>User</th><th>Nombre</th><th>Email</th><th>Rol</th><th class="text-end">Acciones</th></tr></thead><tbody><template x-for="u in usuarios" :key="u.id"><tr><td x-text="u.username"></td><td x-text="u.nombre"></td><td x-text="u.email"></td><td><span class="badge" :class="u.role==='admin'?'bg-danger':'bg-success'" x-text="u.role"></span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" @click="prepararEdicionUsuario(u)" :disabled="u.username==='admin'&&currentUser.nombre!=='admin'">✏️</button> <button class="btn btn-sm btn-outline-danger" @click="eliminar('usuarios', u.id)" :disabled="u.username==='admin'">X</button></td></tr></template></tbody></table></div>
+                <div x-show="showFormUser" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label>Usuario</label>
+                            <input type="text" class="form-control" x-model="formUser.username">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Email</label>
+                            <input type="email" class="form-control" x-model="formUser.email">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Nombre</label>
+                            <input type="text" class="form-control" x-model="formUser.nombre">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Clave</label>
+                            <input type="password" class="form-control" x-model="formUser.password">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Rol</label>
+                            <select class="form-select" x-model="formUser.role">
+                                <option value="vendedor">Vendedor</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button class="btn btn-success" @click="guardarUsuario()">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="u in usuarios" :key="u.id">
+                                <tr>
+                                    <td x-text="u.username"></td>
+                                    <td x-text="u.nombre"></td>
+                                    <td x-text="u.email"></td>
+                                    <td>
+                                        <span class="badge" :class="u.role==='admin'?'bg-danger':'bg-success'" x-text="u.role"></span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionUsuario(u)" :disabled="u.username==='admin'&&currentUser.nombre!=='admin'">✏️</button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('usuarios', u.id)" :disabled="u.username==='admin'">X</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div x-show="view === 'familias'">
                 <div class="d-flex justify-content-between align-items-center mb-3"><h3>Familias</h3><button class="btn btn-primary" @click="toggleFormFamilia()"><i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span></button></div>
-                <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition><div class="row g-3"><div class="col-md-4"><input type="text" class="form-control" placeholder="Nombre *" x-model="formFamilia.nombre"></div><div class="col-md-4"><input type="email" class="form-control" placeholder="Email *" x-model="formFamilia.email"></div><div class="col-md-4"><input type="text" class="form-control" placeholder="Teléfono *" x-model="formFamilia.telefono"></div><div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'"><input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda"></div><div class="col-12 text-end"><button class="btn btn-success" @click="guardarFamilia()">Guardar</button></div></div></div>
+                <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" placeholder="Nombre *" x-model="formFamilia.nombre">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="email" class="form-control" placeholder="Email *" x-model="formFamilia.email">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" placeholder="Teléfono *" x-model="formFamilia.telefono">
+                        </div>
+                        <div class="col-md-4" x-show="formFamilia.id && currentUser.role==='admin'">
+                            <input type="number" class="form-control" placeholder="Deuda" x-model="formFamilia.deuda">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button class="btn btn-secondary me-2" @click="toggleFormFamilia()">Cancelar</button>
+                            <button class="btn btn-success" @click="guardarFamilia()">Guardar</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-responsive bg-white rounded shadow-sm">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -658,7 +774,7 @@
                                     <td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$' + formatMoney(f.deuda)"></td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button>
-                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)"x-show="currentUser.role === 'admin'">X</button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)" x-show="currentUser.role === 'admin'">X</button>
                                     </td>
                                 </tr>
                             </template>
@@ -1551,11 +1667,18 @@ function appData() {
             }
         },
         prepararEdicionUsuario(u){this.formUser={...u,password:''};this.showFormUser=true;},
-        ttoggleFormFamilia() {
+        toggleFormFamilia() {
+            // 1. Invertimos la visibilidad
             this.showFormFamilia = !this.showFormFamilia;
+            
+            // 2. Si estamos CERRANDO el formulario (es decir, show es false), limpiamos los datos
             if (!this.showFormFamilia) {
-                // Al cerrar/limpiar, dejamos el +569 listo
-                this.formFamilia = { deuda: 0, telefono: '+569' }; 
+                this.formFamilia = { 
+                    nombre: '', 
+                    email: '', 
+                    deuda: 0, 
+                    telefono: '+569' // Mantenemos el prefijo listo
+                }; 
             }
         },
         prepararEdicionFamilia(f){this.formFamilia={...f};this.showFormFamilia=true;},
