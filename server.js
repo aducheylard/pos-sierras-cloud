@@ -563,8 +563,42 @@ app.get('/api/export-deudas', requireAuth, (req, res) => {
 
 // --- USUARIOS Y LOGIN ---
 app.get('/api/usuarios', requireAuth, (req, res) => res.json(db.prepare('SELECT id, username, role, nombre, email FROM usuarios').all()));
-app.post('/api/usuarios', requireAuth, requireAdmin, (req, res) => { const {username,password,role,nombre,email}=req.body; try{ db.prepare('INSERT INTO usuarios (username, password, role, nombre, email) VALUES (?, ?, ?, ?, ?)').run(username, bcrypt.hashSync(password, 10), role, nombre, email); if(email) enviarEmail(email, 'Credenciales', `User:${username} Pass:${password}`); res.json({success:true}); }catch(e){res.status(400).json({error:"Existe"});} });
-app.put('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => { const {username,password,role,nombre,email}=req.body; if(password && password.trim()) db.prepare('UPDATE usuarios SET username=?, password=?, role=?, nombre=?, email=? WHERE id=?').run(username, bcrypt.hashSync(password, 10), role, nombre, email, req.params.id); else db.prepare('UPDATE usuarios SET username=?, role=?, nombre=?, email=? WHERE id=?').run(username, role, nombre, email, req.params.id); res.json({success:true}); });
+app.post('/api/usuarios', requireAuth, requireAdmin, (req, res) => { 
+    // 1. Cambiamos 'const' por 'let' para poder modificar el rol si viene vacío
+    let {username, password, role, nombre, email} = req.body; 
+    
+    // 🛡️ 2. EL SEGURO ANTI-ERRORES:
+    // Si el rol es nulo, indefinido o texto vacío, lo forzamos a ser 'vendedor'
+    if (!role || role.trim() === '') role = 'vendedor';
+
+    try { 
+        db.prepare('INSERT INTO usuarios (username, password, role, nombre, email) VALUES (?, ?, ?, ?, ?)')
+          .run(username, bcrypt.hashSync(password, 10), role, nombre, email); 
+        
+        if(email) enviarEmail(email, 'Credenciales', `User:${username} Pass:${password}`); 
+        
+        res.json({success:true}); 
+    } catch(e) {
+        res.status(400).json({error:"Existe"});
+    } 
+});
+app.put('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => { 
+    // 1. Cambiamos 'const' a 'let' para poder corregir el dato
+    let {username, password, role, nombre, email} = req.body; 
+    
+    // 🛡️ 2. SEGURO ANTI-VACÍO:
+    // Si al editar se borró el rol, lo devolvemos a 'vendedor'
+    if (!role || role.trim() === '') role = 'vendedor';
+
+    if(password && password.trim()){
+        db.prepare('UPDATE usuarios SET username=?, password=?, role=?, nombre=?, email=? WHERE id=?')
+          .run(username, bcrypt.hashSync(password, 10), role, nombre, email, req.params.id); 
+    } else { 
+        db.prepare('UPDATE usuarios SET username=?, role=?, nombre=?, email=? WHERE id=?')
+          .run(username, role, nombre, email, req.params.id); 
+    } 
+    res.json({success:true}); 
+});
 app.delete('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => { db.prepare('DELETE FROM usuarios WHERE id=?').run(req.params.id); res.json({success:true}); });
 app.post('/api/login', (req, res) => { const { username, password } = req.body; const u = db.prepare("SELECT * FROM usuarios WHERE username = ?").get(username); if(!u || !bcrypt.compareSync(password, u.password)) return res.status(400).json({error:"Error credenciales"}); const t = uuidv4(); db.prepare("INSERT INTO sesiones (token, user_id) VALUES (?, ?)").run(t, u.id); res.json({token:t, role:u.role, nombre:u.nombre}); });
 app.post('/api/logout', (req, res) => { db.prepare("DELETE FROM sesiones WHERE token = ?").run(req.headers.authorization); res.json({success:true}); });

@@ -1533,7 +1533,23 @@ function appData() {
         async reenviarBoleta(v){if(confirm("¿Reenviar?")){await this.fetchAuth(`/api/ventas/${v.id}/resend`,{method:'POST'});alert("Enviado");}},
 
         // --- FORMULARIOS ---
-        toggleFormUsuario(){this.showFormUser=!this.showFormUser;if(!this.showFormUser)this.formUser={role:'vendedor'};},
+        toggleFormUsuario(){
+            this.showFormUser = !this.showFormUser;
+            
+            if(this.showFormUser) {
+                // AL ABRIR: Forzamos que empiece limpio y con rol 'vendedor'
+                this.formUser = {
+                    username: '',
+                    password: '',
+                    nombre: '',
+                    email: '',
+                    role: 'vendedor' // <--- ESTO EVITA QUE NAZCA VACÍO
+                };
+            } else {
+                // Al cerrar limpiamos
+                this.formUser = { role: 'vendedor' };
+            }
+        },
         prepararEdicionUsuario(u){this.formUser={...u,password:''};this.showFormUser=true;},
         ttoggleFormFamilia() {
             this.showFormFamilia = !this.showFormFamilia;
