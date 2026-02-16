@@ -11,7 +11,7 @@ const ExcelJS = require('exceljs');
 
 // --- IMPORTAMOS LAS PLANTILLAS EXTERNAS ---
 // Asegúrate de tener el archivo emailTemplates.js en la misma carpeta
-const { generarHtmlBoleta, generarHtmlBienvenida, generarHtmlAnulacion } = require('./emailTemplates');
+const { generarHtmlBoleta, generarHtmlBienvenida, generarHtmlAnulacion, generarHtmlCobranza} = require('./emailTemplates');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -200,6 +200,53 @@ app.delete('/api/familias/:id', requireAuth, requireAdmin, (req, res) => { // 1.
     res.json({ success: true });
 });
 
+app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req, res) => {
+    const { emailPrueba } = req.body;
+    
+    // 1. Buscamos todas las familias que deban dinero y tengan email registrado
+    const deudores = db.prepare("SELECT * FROM familias WHERE deuda > 0 AND email != '' AND email IS NOT NULL").all();
+
+    if (deudores.length === 0) {
+        return res.status(400).json({ error: "No hay familias con deuda o no tienen correo registrado." });
+    }
+
+    // 2. MODO PRUEBA (1 solo correo, este sí te hace esperar un segundito)
+    if (emailPrueba) {
+        const familiaEjemplo = deudores[0]; 
+        const html = generarHtmlCobranza(familiaEjemplo.nombre, familiaEjemplo.id, familiaEjemplo.deuda);
+        await enviarEmail(emailPrueba, `[PRUEBA] Fe de erratas: Aviso de Saldo Pendiente`, html);
+        return res.json({ success: true, message: `CORREO DE PRUEBA ENVIADO a ${emailPrueba}.` });
+    }
+
+    // 3. MODO MASIVO EN SEGUNDO PLANO (Background Task)
+    
+    // RESPONDEMOS DE INMEDIATO AL NAVEGADOR (Para que puedas seguir trabajando)
+    res.json({ 
+        success: true, 
+        message: `El servidor ha comenzado a enviar ${deudores.length} correos en segundo plano.\n\nYa puedes cerrar esta ventana o seguir usando el sistema tranquilamente.` 
+    });
+
+    // EJECUTAMOS EL BUCLE "POR DEBAJO" (Sin el 'await' bloqueando la ruta)
+    (async () => {
+        let enviados = 0;
+        console.log(`🚀 INICIANDO TAREA EN SEGUNDO PLANO: Cobranza masiva a ${deudores.length} familias.`);
+        
+        for (const f of deudores) {
+            try {
+                const html = generarHtmlCobranza(f.nombre, f.id, f.deuda);
+                await enviarEmail(f.email, `Fe de erratas: Error en el RUT. Aviso de Saldo Pendiente - Sierras`, html);
+                enviados++;
+                
+                // ⏱️ Freno de 2.5 seg entre cada envío para no bloquear Gmail
+                await new Promise(resolve => setTimeout(resolve, 2500));
+            } catch (error) {
+                console.error(`Error enviando cobranza a ${f.email}:`, error);
+            }
+        }
+        
+        console.log(`✅ TAREA FINALIZADA: Cobranza masiva completada. Correos enviados: ${enviados}/${deudores.length}`);
+    })();
+});
 
 // --- VENTAS ---
 app.get('/api/ventas', requireAuth, (req, res) => {

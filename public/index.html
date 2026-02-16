@@ -774,7 +774,22 @@
                 </div>
             </div>
             <div x-show="view === 'familias'">
-                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Familias</h3><button class="btn btn-primary" @click="toggleFormFamilia()"><i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span></button></div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3>Familias</h3>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning fw-bold shadow-sm" x-show="currentUser.role === 'admin'" @click="enviarCobranzasPrueba()" title="Probar diseño">
+                        <i class="bi bi-envelope-exclamation-fill"></i> <span class="d-none d-md-inline">Prueba</span>
+                    </button>
+                    
+                    <button class="btn btn-danger fw-bold shadow-sm" x-show="currentUser.role === 'admin'" @click="enviarCobranzasMasivas()" title="Enviar a todos los deudores">
+                        <i class="bi bi-send-fill"></i> <span class="d-none d-md-inline">Cobrar a Todos</span>
+                    </button>
+
+                    <button class="btn btn-primary" @click="toggleFormFamilia()">
+                        <i class="bi" :class="showFormFamilia ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormFamilia ? 'Cerrar' : 'Nueva'"></span>
+                    </button>
+                </div>
+            </div>
                 <div x-show="showFormFamilia" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -1747,8 +1762,54 @@ function appData() {
             }
         },
         prepararEdicionFamilia(f){this.formFamilia={...f};this.showFormFamilia=true;},
+        async enviarCobranzasPrueba() {
+            // Pedimos el correo al administrador
+            const testEmail = prompt("MODO PRUEBA:\nIngresa TU correo electrónico para recibir un mail de prueba de cobranza. (Ningún cliente real recibirá esto aún)");
+            
+            if (!testEmail || !testEmail.includes('@')) return;
 
-        // --- [AQUÍ ESTÁ LA MAGIA QUE ARREGLA LAS CATEGORÍAS] ---
+            if (!confirm(`¿Enviar correo de prueba a ${testEmail}?`)) return;
+
+            try {
+                const r = await this.fetchAuth('/api/familias/notificar-deudas', {
+                    method: 'POST',
+                    body: JSON.stringify({ emailPrueba: testEmail })
+                });
+
+                const d = await r.json();
+                
+                if (r.ok) {
+                    alert("✅ " + d.message);
+                } else {
+                    alert("❌ " + d.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión al enviar prueba.");
+            }
+        },
+        async enviarCobranzasMasivas() {
+            if (!confirm("⚠️ ¡ATENCIÓN! ⚠️\n\nEstás a punto de iniciar el envío de correos de cobranza a TODAS las familias que tienen deuda.\n\n¿Estás 100% seguro de proceder?")) return;
+
+            try {
+                const r = await this.fetchAuth('/api/familias/notificar-deudas', {
+                    method: 'POST',
+                    body: JSON.stringify({}) 
+                });
+
+                const d = await r.json();
+                
+                if (r.ok) {
+                    // Muestra el mensaje de éxito de inmediato
+                    alert("✅ " + d.message);
+                } else {
+                    alert("❌ Error: " + d.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión al intentar iniciar la tarea.");
+            }
+        },
         agregarCategoria(c){
             if(!c) return;
             const val = c.trim();

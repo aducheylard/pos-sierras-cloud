@@ -152,4 +152,67 @@ const generarHtmlAnulacion = (venta, carrito) => {
     </div>`;
 };
 
-module.exports = { generarHtmlBoleta, generarHtmlBienvenida, generarHtmlAnulacion };
+
+function generarHtmlCobranza(familiaNombre, familiaId, deudaTotal) {
+    // Formatear la deuda con puntos
+    const deudaStr = deudaTotal.toLocaleString('es-CL');
+
+    return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+        <div style="background-color: #0d6efd; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0;">🏔️ Sierras de Bellavista</h2>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">Fe de erratas: Error en el RUT. Aviso de Saldo Pendiente</p>
+        </div>
+        
+        <div style="padding: 30px 20px; background-color: #fcfcfc;">
+            <p style="font-size: 16px; color: #333;">
+                Hola <strong>Familia ${familiaNombre}</strong><br>
+                <span style="color: #6c757d; font-size: 14px;">(Familia N° ${familiaId})</span>
+            </p>
+            <p style="font-size: 16px; color: #555; line-height: 1.5;">
+                Esperamos que se encuentren muy bien. Les escribimos para informarles el estado actual de su cuenta familiar.
+            </p>
+
+            <div style="background-color: #fff; border: 2px solid #dc3545; border-radius: 8px; padding: 20px; text-align: center; margin: 25px 0;">
+                <p style="margin: 0; color: #6c757d; font-size: 14px; text-transform: uppercase; font-weight: bold;">Saldo Total a Pagar *</p>
+                <h1 style="margin: 10px 0 0 0; color: #dc3545; font-size: 36px;">$${deudaStr}</h1>
+                <p style="margin: 12px 0 0 0; color: #856404; font-size: 12px; background-color: #fff3cd; padding: 5px; border-radius: 4px; display: inline-block;">
+                    <em>* Este monto corresponde exclusivamente a compras por "Cuenta Familiar". Las compras pagadas en efectivo no forman parte de este monto.</em>
+                </p>
+            </div>
+
+            <h3 style="color: #333; margin-top: 30px;">🏦 ¿Cómo realizar el pago?</h3>
+            <p style="font-size: 15px; color: #555; line-height: 1.6;">
+                Por favor, realice una transferencia bancaria a los siguientes datos:
+            </p>
+            
+            <div style="background-color: #e9ecef; padding: 15px; border-radius: 6px; font-size: 14px; color: #333; line-height: 1.6;">
+                <strong>Banco:</strong> Banco BCI<br>
+                <strong>Tipo de Cuenta:</strong> Cuenta Corriente<br>
+                <strong>Número:</strong> 12615064<br>
+                <strong>RUT:</strong> 72.122.200-6<br>
+                <strong>Nombre:</strong> Corporacion Sierras de Bellavista<br>
+                <strong>Email:</strong> cobranzas@sierrasdebellavista.cl<br>
+                <strong>Motivo:</strong> Pago semana bellavistina Familia Nº ${familiaId} ${familiaNombre}
+            </div>
+            
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-top: 20px; color: #856404; font-size: 15px;">
+                <strong>⚠️ MUY IMPORTANTE:</strong><br>
+                En el mensaje o <em>detalle de la transferencia</em> de su banco, por favor escriba:<br>
+                <span style="font-size: 16px; font-weight: bold; display: block; margin-top: 5px;">"Pago semana bellavistina Familia Nº ${familiaId} ${familiaNombre}"</span>
+            </div>
+            
+            <p style="font-size: 14px; color: #dc3545; font-weight: bold; margin-top: 20px;">
+                * Recuerde enviar el comprobante de transferencia al correo indicado para rebajar su saldo en el sistema.
+            </p>
+        </div>
+        
+        <div style="background-color: #f8f9fa; color: #6c757d; padding: 15px; text-align: center; font-size: 12px; border-top: 1px solid #ddd;">
+            Este es un correo automático generado por el sistema POS de Sierras de Bellavista.<br>
+            Por favor no responda directamente a este correo.
+        </div>
+    </div>
+    `;
+}
+
+module.exports = { generarHtmlBoleta, generarHtmlBienvenida, generarHtmlAnulacion, generarHtmlCobranza};
