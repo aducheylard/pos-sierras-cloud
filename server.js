@@ -209,7 +209,7 @@ app.get('/api/ventas', requireAuth, (req, res) => {
     // 2. Decidimos qué datos mostrar según el rol
     if (user.role === 'admin') {
         // El ADMIN ve TODO
-        const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC LIMIT 500').all();
+        const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
         res.json(ventas);
     } else {
         // El VENDEDOR ve SOLO LO SUYO
@@ -268,9 +268,9 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
                 }
             });
 
-            // 4. INSERTAR VENTA
-            const info = db.prepare("INSERT INTO ventas (fecha, vendedor, familia_nombre, familia_email, familia_id, saldo_historico, total, metodo_pago, detalle_json, status) VALUES (datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?, ?, ?, 'ok')")
-                .run(vendedor, familia.nombre, familia.email, familia.id, nuevoSaldo, total, metodo, JSON.stringify(carrito));
+            // 4. INSERTAR VENTA (Respetando la hora local del navegador)
+            const info = db.prepare("INSERT INTO ventas (fecha, vendedor, familia_nombre, familia_email, familia_id, saldo_historico, total, metodo_pago, detalle_json, status) VALUES (COALESCE(?, datetime('now', 'localtime')), ?, ?, ?, ?, ?, ?, ?, ?, 'ok')")
+            .run(req.body.fechaLocal, vendedor, familia.nombre, familia.email, familia.id, nuevoSaldo, total, metodo, JSON.stringify(carrito));
             
             // 5. REGISTRAR NÚMEROS DE BINGO COMO VENDIDOS (NUEVO 🔒)
             // Ahora que tenemos el ID de la venta, bloqueamos los números
@@ -297,7 +297,7 @@ app.post('/api/ventas', requireAuth, async (req, res) => {
 
             const html = generarHtmlBoleta({ 
                 id: resultadoVenta.id,
-                fecha: new Date(), 
+                fecha: req.body.fechaLocal ? new Date(req.body.fechaLocal.replace(' ', 'T')) : new Date(),
                 vendedor,
                 familiaNombre: familia.nombre, 
                 familiaId: familia.id, 
