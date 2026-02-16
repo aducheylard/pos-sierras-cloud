@@ -218,6 +218,10 @@ app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req
         return res.json({ success: true, message: `CORREO DE PRUEBA ENVIADO a ${emailPrueba}.` });
     }
 
+    // --- BARRERA DE SEGURIDAD ---
+    // Bloqueamos el envío masivo directamente en el cerebro del servidor
+    return res.status(403).json({ error: "⛔ El envío masivo está desactivado por seguridad en el servidor." });
+
     // 3. MODO MASIVO EN SEGUNDO PLANO (Background Task)
     
     // RESPONDEMOS DE INMEDIATO AL NAVEGADOR (Para que puedas seguir trabajando)
