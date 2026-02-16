@@ -65,6 +65,7 @@ try { db.prepare("SELECT familia_id FROM ventas LIMIT 1").get(); } catch (e) { t
 try { db.prepare("SELECT saldo_historico FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN saldo_historico INTEGER DEFAULT 0");}catch(err){} }
 try { db.prepare("SELECT status FROM ventas LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE ventas ADD COLUMN status TEXT DEFAULT 'ok'");}catch(err){} }
 try { db.prepare("SELECT orden FROM productos LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE productos ADD COLUMN orden INTEGER DEFAULT 9999");}catch(err){} }
+try { db.prepare("SELECT activo FROM usuarios LIMIT 1").get(); } catch (e) { try{db.exec("ALTER TABLE usuarios ADD COLUMN activo INTEGER DEFAULT 1");}catch(err){} }
 
 // Configuración por defecto
 const defaultConfig = { 
@@ -562,7 +563,7 @@ app.get('/api/export-deudas', requireAuth, (req, res) => {
 });
 
 // --- USUARIOS Y LOGIN ---
-app.get('/api/usuarios', requireAuth, (req, res) => res.json(db.prepare('SELECT id, username, role, nombre, email FROM usuarios').all()));
+app.get('/api/usuarios', requireAuth, (req, res) => res.json(db.prepare('SELECT id, username, role, nombre, email, activo FROM usuarios').all()));
 app.post('/api/usuarios', requireAuth, requireAdmin, (req, res) => { 
     // 1. Cambiamos 'const' por 'let' para poder modificar el rol si viene vacío
     let {username, password, role, nombre, email} = req.body; 
@@ -599,8 +600,37 @@ app.put('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
     } 
     res.json({success:true}); 
 });
-app.delete('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => { db.prepare('DELETE FROM usuarios WHERE id=?').run(req.params.id); res.json({success:true}); });
-app.post('/api/login', (req, res) => { const { username, password } = req.body; const u = db.prepare("SELECT * FROM usuarios WHERE username = ?").get(username); if(!u || !bcrypt.compareSync(password, u.password)) return res.status(400).json({error:"Error credenciales"}); const t = uuidv4(); db.prepare("INSERT INTO sesiones (token, user_id) VALUES (?, ?)").run(t, u.id); res.json({token:t, role:u.role, nombre:u.nombre}); });
+app.delete('/api/usuarios/:id', requireAuth, requireAdmin, (req, res) => { 
+    // Candado anti-suicidio digital
+    if (parseInt(req.params.id) === req.userId) {
+        return res.status(400).json({error: "⛔ No puedes eliminar tu propia cuenta."});
+    }
+    
+    db.prepare('DELETE FROM usuarios WHERE id=?').run(req.params.id); 
+    res.json({success:true}); 
+});
+app.patch('/api/usuarios/:id/status', requireAuth, requireAdmin, (req, res) => { 
+    // Candado anti-suicidio digital
+    if (parseInt(req.params.id) === req.userId) {
+        return res.status(400).json({error: "⛔ No puedes desactivar tu propia cuenta."});
+    }
+    
+    db.prepare('UPDATE usuarios SET activo = ? WHERE id = ?').run(req.body.activo, req.params.id); 
+    res.json({success:true}); 
+});
+app.post('/api/login', (req, res) => { 
+    const { username, password } = req.body; 
+    const u = db.prepare("SELECT * FROM usuarios WHERE username = ?").get(username); 
+    
+    if(!u || !bcrypt.compareSync(password, u.password)) return res.status(400).json({error:"Error credenciales"}); 
+    
+    // 🛡️ NUEVO: Bloqueo de usuarios inactivos
+    if(u.activo === 0) return res.status(403).json({error:"Usuario desactivado. Contacta al administrador."}); 
+    
+    const t = uuidv4(); 
+    db.prepare("INSERT INTO sesiones (token, user_id) VALUES (?, ?)").run(t, u.id); 
+    res.json({token:t, role:u.role, nombre:u.nombre}); 
+});
 app.post('/api/logout', (req, res) => { db.prepare("DELETE FROM sesiones WHERE token = ?").run(req.headers.authorization); res.json({success:true}); });
 
 // --- CONFIG GENERAL ---

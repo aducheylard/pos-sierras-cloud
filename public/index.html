@@ -666,7 +666,13 @@
             </div>
 
             <div x-show="view === 'usuarios'">
-                <div class="d-flex justify-content-between align-items-center mb-3"><h3>Usuarios</h3><button class="btn btn-primary" @click="toggleFormUsuario()"><i class="bi" :class="showFormUser ? 'bi-x-lg' : 'bi-plus-lg'"></i> <span x-text="showFormUser ? 'Cerrar' : 'Nuevo'"></span></button></div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>Usuarios</h3>
+                    <button class="btn btn-primary" @click="toggleFormUsuario()">
+                        <i class="bi" :class="showFormUser ? 'bi-x-lg' : 'bi-plus-lg'"></i>
+                        <span x-text="showFormUser ? 'Cerrar' : 'Nuevo'"></span>
+                    </button>
+                </div>
                 <div x-show="showFormUser" class="card p-4 mb-4 border-0 shadow-sm bg-light" x-transition>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -705,21 +711,39 @@
                                 <th>Nombre</th>
                                 <th>Email</th>
                                 <th>Rol</th>
+                                <th>Estado</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-for="u in usuarios" :key="u.id">
-                                <tr>
+                                <tr :class="{'table-secondary text-muted': u.activo === 0}">
                                     <td x-text="u.username"></td>
                                     <td x-text="u.nombre"></td>
                                     <td x-text="u.email"></td>
                                     <td>
                                         <span class="badge" :class="u.role==='admin'?'bg-danger':'bg-success'" x-text="u.role"></span>
                                     </td>
+
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" 
+                                                :checked="u.activo !== 0" 
+                                                @change="cambiarEstadoUsuario(u)" 
+                                                :disabled="u.username === 'admin' || u.nombre === currentUser.nombre">
+                                        </div>
+                                    </td>
+                                    
                                     <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionUsuario(u)" :disabled="u.username==='admin'&&currentUser.nombre!=='admin'">✏️</button>
-                                        <button class="btn btn-sm btn-outline-danger" @click="eliminar('usuarios', u.id)" :disabled="u.username==='admin'">X</button>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                            @click="prepararEdicionUsuario(u)" 
+                                            :disabled="u.username === 'admin' && currentUser.nombre !== 'Administrador'">✏️
+                                        </button>
+                                        
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                            @click="eliminar('usuarios', u.id)" 
+                                            :disabled="u.username === 'admin' || u.nombre === currentUser.nombre">X
+                                        </button>
                                     </td>
                                 </tr>
                             </template>
@@ -1726,6 +1750,26 @@ function appData() {
         handleFileUpload(e){this.fotoFile=e.target.files[0]},
         
         async guardarUsuario(){let u='/api/usuarios',m='POST';if(this.formUser.id){u+=`/${this.formUser.id}`;m='PUT'} await this.fetchAuth(u,{method:m,body:JSON.stringify(this.formUser)}); this.toggleFormUsuario();this.cargarUsuarios();},
+        async cambiarEstadoUsuario(u) {
+            // Invertimos el estado (si es 0 pasa a 1, si es distinto de 0 pasa a 0)
+            const nuevoEstado = (u.activo === 0) ? 1 : 0;
+            
+            try {
+                const r = await this.fetchAuth(`/api/usuarios/${u.id}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ activo: nuevoEstado })
+                });
+                
+                if(r.ok) {
+                    this.cargarUsuarios(); // Recarga la tabla para pintar de gris/blanco
+                } else {
+                    alert("Error al cambiar el estado del usuario");
+                    this.cargarUsuarios(); // Revierte el switch visual si hubo error
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        },
         async guardarFamilia() {
             // --- VALIDACIÓN ESTRICTA NUEVA ---
             if (!this.formFamilia.nombre || !this.formFamilia.nombre.trim()) return alert("⚠️ El Nombre es obligatorio");
