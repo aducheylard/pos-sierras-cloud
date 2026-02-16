@@ -347,6 +347,7 @@
 
             <div x-show="view === 'ventas'">
                 <h3>Historial de Ventas</h3>
+                
                 <div class="card p-3 mb-3 border-0 shadow-sm">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-2"><span class="filter-label">Desde</span><input type="date" class="form-control" x-model="filters.startDate"></div>
@@ -363,7 +364,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive bg-white rounded shadow-sm">
+                
+                <div class="table-responsive bg-white rounded shadow-sm mb-3">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
@@ -377,7 +379,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <template x-for="v in ventasFiltradas" :key="v.id">
+                            <template x-for="v in ventasPaginadas" :key="v.id">
                                 <tr :class="{'reembolsado': v.status === 'reembolsado'}">
                                     <td>
                                         <span class="badge bg-secondary" x-text="v.id"></span>
@@ -405,6 +407,26 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded shadow-sm border" x-show="totalPaginas > 1">
+                    <button class="btn btn-sm btn-outline-primary fw-bold px-3" 
+                        @click="if(paginaActual > 1) paginaActual--"
+                        :disabled="paginaActual === 1">
+                        <i class="bi bi-chevron-left"></i> Anterior
+                    </button>
+                    
+                    <div class="text-center text-muted small fw-bold">
+                        Página <span class="badge bg-primary rounded-pill px-2 fs-6" x-text="paginaActual"></span> de <span x-text="totalPaginas"></span>
+                        <div style="font-size: 0.75rem; margin-top: 2px;" x-text="ventasFiltradas.length + ' transacciones filtradas'"></div>
+                    </div>
+
+                    <button class="btn btn-sm btn-outline-primary fw-bold px-3" 
+                        @click="if(paginaActual < totalPaginas) paginaActual++"
+                        :disabled="paginaActual === totalPaginas">
+                        Siguiente <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+
             </div>
 
             <div x-show="view === 'stats'">
@@ -1114,6 +1136,10 @@ function appData() {
         filters: { search: '', metodo: '', startDate: '', endDate: '', vendedor: '', sort: 'desc' },
         statsFilters: { startDate: thirtyDaysAgo, endDate: today }, 
         
+        // --- NUEVAS VARIABLES DE PAGINACIÓN ---
+        paginaActual: 1,
+        itemsPorPagina: 200,
+        
         // VARIABLES NUEVAS PARA CATEGORÍA (IMPORTANTE)
         catListOpen: false, 
         catInput: '', 
@@ -1142,6 +1168,20 @@ function appData() {
             if(this.filters.metodo) { if(this.filters.metodo==='reembolsado')v=v.filter(x=>x.status==='reembolsado'); else v=v.filter(x=>x.metodo_pago===this.filters.metodo&&x.status!=='reembolsado'); }
             if(this.filters.vendedor) v=v.filter(x=>x.vendedor===this.filters.vendedor);
             return v.sort((a,b)=>this.filters.sort==='desc'?new Date(b.fecha)-new Date(a.fecha):new Date(a.fecha)-new Date(b.fecha));
+        },
+        get totalPaginas() {
+            // Calcula cuántas páginas necesitamos (Ej: 500 ventas / 200 = 3 páginas)
+            return Math.ceil(this.ventasFiltradas.length / this.itemsPorPagina) || 1;
+        },
+
+        get ventasPaginadas() {
+            // Si filtramos y la página actual queda fuera de rango, volvemos a la página 1
+            if (this.paginaActual > this.totalPaginas) this.paginaActual = 1;
+            
+            // Recortamos el pedazo de lista que corresponde a esta página
+            const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
+            const fin = inicio + this.itemsPorPagina;
+            return this.ventasFiltradas.slice(inicio, fin);
         },
         get totalCarrito() { return this.carrito.reduce((s,i)=>s+(i.precio*i.cantidad),0); },
         get uniqueCategories() { 
