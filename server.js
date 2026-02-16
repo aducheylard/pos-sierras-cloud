@@ -210,6 +210,11 @@ app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req
         return res.status(400).json({ error: "No hay familias con deuda o no tienen correo registrado." });
     }
 
+    // --- BARRERA DE SEGURIDAD ---
+    // Bloqueamos el envío masivo directamente en el cerebro del servidor
+    return res.status(403).json({ error: "⛔ El envío masivo está desactivado por seguridad en el servidor." });
+
+
     // 2. MODO PRUEBA (1 solo correo, este sí te hace esperar un segundito)
     if (emailPrueba) {
         const familiaEjemplo = deudores[0]; 
@@ -217,10 +222,6 @@ app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req
         await enviarEmail(emailPrueba, `[PRUEBA] Fe de erratas: Aviso de Saldo Pendiente`, html);
         return res.json({ success: true, message: `CORREO DE PRUEBA ENVIADO a ${emailPrueba}.` });
     }
-
-    // --- BARRERA DE SEGURIDAD ---
-    // Bloqueamos el envío masivo directamente en el cerebro del servidor
-    return res.status(403).json({ error: "⛔ El envío masivo está desactivado por seguridad en el servidor." });
 
     // 3. MODO MASIVO EN SEGUNDO PLANO (Background Task)
     
@@ -238,7 +239,7 @@ app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req
         for (const f of deudores) {
             try {
                 const html = generarHtmlCobranza(f.nombre, f.id, f.deuda);
-                await enviarEmail(f.email, `Fe de erratas: Error en el RUT. Aviso de Saldo Pendiente - Sierras`, html);
+                await enviarEmail(f.email, `Fe de erratas Nº2: Error en el RUT. Aviso de Saldo Pendiente - Sierras`, html);
                 enviados++;
                 
                 // ⏱️ Freno de 2.5 seg entre cada envío para no bloquear Gmail
@@ -250,6 +251,17 @@ app.post('/api/familias/notificar-deudas', requireAuth, requireAdmin, async (req
         
         console.log(`✅ TAREA FINALIZADA: Cobranza masiva completada. Correos enviados: ${enviados}/${deudores.length}`);
     })();
+});
+
+app.post('/api/familias/reset-deudas', requireAuth, requireAdmin, (req, res) => {
+    try {
+        // Ejecutamos el update masivo
+        db.prepare('UPDATE familias SET deuda = 0').run();
+        res.json({ success: true, message: "Todas las deudas han sido reiniciadas a $0 exitosamente." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error interno al reiniciar las deudas." });
+    }
 });
 
 // --- VENTAS ---

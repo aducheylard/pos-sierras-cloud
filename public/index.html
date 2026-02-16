@@ -671,14 +671,14 @@
                                     <br>
                                     <span class="text-success fw-bold">✅ Tus Productos y Usuarios NO se borrarán.</span>
                                 </p>
-                                <button class="btn btn-warning w-100 fw-bold" @click="resetProduccion()">
+                                <button class="btn btn-warning w-100 fw-bold" @click="resetProduccion()" disabled>
                                     🧹 LIMPIAR DATOS DE PRUEBA
                                 </button>
                             </div>
                             <div>
                                 <h6 class="fw-bold text-danger">☠️ Factory Reset</h6>
                                 <p class="small text-muted mb-2">Borra ABSOLUTAMENTE TODO (Incluyendo productos y usuarios).</p>
-                                <button class="btn btn-outline-danger w-100 btn-sm" @click="resetDatabase()">
+                                <button class="btn btn-outline-danger w-100 btn-sm" @click="resetDatabase()" disabled>
                                     Borrar Base de Datos Completa
                                 </button>
                             </div>
@@ -783,6 +783,10 @@
                     
                     <button class="btn btn-danger fw-bold shadow-sm" x-show="currentUser.role === 'admin'" @click="enviarCobranzasMasivas()" title="Envío masivo bloqueado" disabled>
                         <i class="bi bi-send-fill"></i> <span class="d-none d-md-inline">Cobrar a Todos</span>
+                    </button>
+
+                    <button class="btn btn-outline-danger fw-bold shadow-sm" x-show="currentUser.role === 'admin'" @click="resetearDeudasMasivo()" title="Limpiar todas las deudas para nueva temporada" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-md-inline">Cierre Temporada (Deudas a $0)</span>
                     </button>
 
                     <button class="btn btn-primary" @click="toggleFormFamilia()">
@@ -1105,7 +1109,11 @@ function appData() {
         async guardarFamiliaDesdePOS() {
             // --- VALIDACIÓN ESTRICTA NUEVA ---
             if (!this.formFamiliaPOS.nombre || !this.formFamiliaPOS.nombre.trim()) return alert("⚠️ El Nombre es obligatorio");
-            if (!this.formFamiliaPOS.email || !this.formFamiliaPOS.email.trim()) return alert("⚠️ El Email es obligatorio para enviar boletas");
+            // Verificamos que no esté vacío y que tenga formato de correo real
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!this.formFamiliaPOS.email || !emailRegex.test(this.formFamiliaPOS.email.trim())) {
+                return alert("⚠️ Por favor, ingresa un correo válido que contenga un '@' y un dominio (ejemplo: nombre@correo.com)");
+            }
             if (!this.formFamiliaPOS.telefono || !this.formFamiliaPOS.telefono.trim()) return alert("⚠️ El Teléfono es obligatorio");
 
             try {
@@ -1810,6 +1818,28 @@ function appData() {
                 alert("Error de conexión al intentar iniciar la tarea.");
             }
         },
+        async resetearDeudasMasivo() {
+            // Primer Candado
+            if (!confirm("⚠️ ¡PELIGRO EXTREMO! ⚠️\n\nEstás a punto de borrar la deuda de TODAS las familias y dejarlas en $0.\n\nTe recomiendo ir a Estadísticas y descargar el 'Reporte de Deudas Excel' como respaldo antes de hacer esto.\n\n¿Estás seguro de empezar la nueva temporada?")) return;
+            
+            // Segundo Candado de Seguridad
+            if (!confirm("Esta acción NO se puede deshacer. Por favor, confirma una vez más: ¿Deseas dejar TODAS las deudas en $0 ahora mismo?")) return;
+
+            try {
+                const r = await this.fetchAuth('/api/familias/reset-deudas', { method: 'POST' });
+                const d = await r.json();
+                
+                if (r.ok) {
+                    alert("✅ " + d.message);
+                    this.cargarDatos(); // Recargamos la tabla para que todos los números pasen a $0 en pantalla
+                } else {
+                    alert("❌ Error: " + d.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión al intentar resetear las deudas.");
+            }
+        },
         agregarCategoria(c){
             if(!c) return;
             const val = c.trim();
@@ -1874,7 +1904,11 @@ function appData() {
         async guardarFamilia() {
             // --- VALIDACIÓN ESTRICTA NUEVA ---
             if (!this.formFamilia.nombre || !this.formFamilia.nombre.trim()) return alert("⚠️ El Nombre es obligatorio");
-            if (!this.formFamilia.email || !this.formFamilia.email.trim()) return alert("⚠️ El Email es obligatorio");
+            // Verificamos que no esté vacío y que tenga formato de correo real
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!this.formFamilia.email || !emailRegex.test(this.formFamilia.email.trim())) {
+                return alert("⚠️ Por favor, ingresa un correo válido que contenga un '@' y un dominio (ejemplo: nombre@correo.com)");
+            }
             if (!this.formFamilia.telefono || !this.formFamilia.telefono.trim()) return alert("⚠️ El Teléfono es obligatorio");
             let u = '/api/familias', m = 'POST';
             if (this.formFamilia.id) {

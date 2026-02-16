@@ -161,7 +161,7 @@ function generarHtmlCobranza(familiaNombre, familiaId, deudaTotal) {
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
         <div style="background-color: #0d6efd; color: white; padding: 20px; text-align: center;">
             <h2 style="margin: 0;">🏔️ Sierras de Bellavista</h2>
-            <p style="margin: 5px 0 0 0; font-size: 14px;">Fe de erratas: Error en el RUT. Aviso de Saldo Pendiente</p>
+            <p style="margin: 5px 0 0 0; font-size: 14px;">Fe de erratas Nº2: Error en el RUT. Aviso de Saldo Pendiente</p>
         </div>
         
         <div style="padding: 30px 20px; background-color: #fcfcfc;">
@@ -190,7 +190,7 @@ function generarHtmlCobranza(familiaNombre, familiaId, deudaTotal) {
                 <strong>Banco:</strong> Banco BCI<br>
                 <strong>Tipo de Cuenta:</strong> Cuenta Corriente<br>
                 <strong>Número:</strong> 12615064<br>
-                <strong>RUT:</strong> 72.122.200-6<br>
+                <strong>RUT:</strong> 71.122.200-6<br>
                 <strong>Nombre:</strong> Corporacion Sierras de Bellavista<br>
                 <strong>Email:</strong> cobranzas@sierrasdebellavista.cl<br>
                 <strong>Motivo:</strong> Pago semana bellavistina Familia Nº ${familiaId} ${familiaNombre}
