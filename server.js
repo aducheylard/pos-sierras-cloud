@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const ExcelJS = require('exceljs');
 
 // --- IMPORTAMOS LAS PLANTILLAS EXTERNAS ---
 // Asegúrate de tener el archivo emailTemplates.js en la misma carpeta
@@ -530,36 +531,90 @@ app.get('/api/stats', requireAuth, (req, res) => {
     });
 });
 
-app.get('/api/export-csv', requireAuth, (req, res) => {
+app.get('/api/export-excel', requireAuth, async (req, res) => {
     const start = req.query.start || '2000-01-01';
     const end = (req.query.end || '2099-12-31') + ' 23:59:59';
     const ventas = db.prepare("SELECT * FROM ventas WHERE status != 'reembolsado' AND fecha BETWEEN ? AND ? ORDER BY fecha DESC").all(start, end);
-    let csv = "\uFEFFID,Fecha,Vendedor,Familia,Metodo,Total,Detalle\n";
+    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Historial de Ventas');
+
+    // 1. Definir columnas y sus anchos visuales
+    worksheet.columns = [
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Fecha', key: 'fecha', width: 22 },
+        { header: 'Vendedor', key: 'vendedor', width: 15 },
+        { header: 'Familia', key: 'familia', width: 25 },
+        { header: 'Método', key: 'metodo', width: 15 },
+        { header: 'Total', key: 'total', width: 15 },
+        { header: 'Detalle', key: 'detalle', width: 60 }
+    ];
+
+    // 2. Estilo de la cabecera (Fondo gris y Letra Negrita)
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    // 3. Llenar los datos
     ventas.forEach(v => {
         let detalleStr = "";
-        try { detalleStr = JSON.parse(v.detalle_json).map(i => `${i.cantidad}x ${i.nombre}`).join(' | ').replace(/,/g, '.'); } catch(e) { detalleStr = "Error"; }
-        const fechaStr = new Date(v.fecha).toLocaleString('es-CL');
-        csv += `${v.id},"${fechaStr}","${v.vendedor}","${v.familia_nombre}","${v.metodo_pago}",${v.total},"${detalleStr}"\n`;
+        try { detalleStr = JSON.parse(v.detalle_json).map(i => `${i.cantidad}x ${i.nombre}`).join(' | '); } catch(e) { detalleStr = "Error"; }
+        
+        worksheet.addRow({
+            id: v.id,
+            fecha: new Date(v.fecha).toLocaleString('es-CL'),
+            vendedor: v.vendedor,
+            familia: v.familia_nombre,
+            metodo: v.metodo_pago,
+            total: v.total,
+            detalle: detalleStr
+        });
     });
-    res.header('Content-Type', 'text/csv; charset=utf-8');
-    res.attachment(`ventas.csv`);
-    res.send(csv);
+
+    // 4. Formato de Moneda nativo de Excel para la columna Total
+    worksheet.getColumn('total').numFmt = '"$"#,##0';
+
+    // 5. Enviar el archivo
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Ventas_${start.split(' ')[0]}.xlsx`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
 });
 
-app.get('/api/export-deudas', requireAuth, (req, res) => {
-    // 1. Buscamos familias con deuda mayor a 0
+app.get('/api/export-deudas-excel', requireAuth, async (req, res) => {
     const deudores = db.prepare("SELECT * FROM familias WHERE deuda > 0 ORDER BY deuda DESC").all();
     
-    // 2. Generamos el CSV
-    let csv = "\uFEFFID,Familia,Email,Telefono,Deuda\n"; // \uFEFF es para que Excel lea tildes
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Deudores');
+
+    worksheet.columns = [
+        { header: 'ID', key: 'id', width: 8 },
+        { header: 'Familia', key: 'nombre', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Teléfono', key: 'telefono', width: 18 },
+        { header: 'Deuda', key: 'deuda', width: 15 }
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCCC' } }; // Fondo rojizo suave
+
     deudores.forEach(d => {
-        csv += `${d.id},"${d.nombre}","${d.email || ''}","${d.telefono || ''}",${d.deuda}\n`;
+        worksheet.addRow({
+            id: d.id,
+            nombre: d.nombre,
+            email: d.email || '',
+            telefono: d.telefono || '',
+            deuda: d.deuda
+        });
     });
 
-    // 3. Enviamos el archivo
-    res.header('Content-Type', 'text/csv; charset=utf-8');
-    res.attachment(`reporte_deudas_${new Date().toISOString().split('T')[0]}.csv`);
-    res.send(csv);
+    worksheet.getColumn('deuda').numFmt = '"$"#,##0'; // Formato Moneda
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Reporte_Deudas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    await workbook.xlsx.write(res);
+    res.end();
 });
 
 // --- USUARIOS Y LOGIN ---

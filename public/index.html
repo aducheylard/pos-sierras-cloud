@@ -1530,13 +1530,13 @@ function appData() {
 
         // 2. Descargar Historial de Ventas
         downloadExcel() {
-            const url = `/api/export-csv?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
-            this.downloadAuthenticated(url, `Ventas_${this.statsFilters.startDate}_${this.statsFilters.endDate}.csv`);
+            const url = `/api/export-excel?start=${this.statsFilters.startDate}&end=${this.statsFilters.endDate}`;
+            this.downloadAuthenticated(url, `Ventas_${this.statsFilters.startDate}_al_${this.statsFilters.endDate}.xlsx`);
         },
 
-        // 3. Descargar Deudas (Nueva función)
+        // 3. Descargar Deudas (Formato Excel)
         downloadDeudas() {
-            this.downloadAuthenticated('/api/export-deudas', 'Reporte_Deudores.csv');
+            this.downloadAuthenticated('/api/export-deudas-excel', `Reporte_Deudores_${new Date().toISOString().split('T')[0]}.xlsx`);
         },
 
         // --- CARRITO ---
