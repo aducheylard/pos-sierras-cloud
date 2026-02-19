@@ -838,6 +838,12 @@
                                     </td>
                                     <td class="fw-bold" :class="{'text-danger': f.deuda > 0, 'text-success': f.deuda < 0}" x-text="'$' + formatMoney(f.deuda)"></td>
                                     <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-warning me-1" 
+                                                x-show="currentUser.role === 'admin'" 
+                                                @click="enviarCobranzaIndividual(f)" 
+                                                title="Reenviar correo de cobranza a esta familia">
+                                            <i class="bi bi-envelope-paper"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-primary" @click="prepararEdicionFamilia(f)">✏️</button>
                                         <button class="btn btn-sm btn-outline-danger" @click="eliminar('familias', f.id)" x-show="currentUser.role === 'admin'">X</button>
                                     </td>
@@ -1816,6 +1822,36 @@ function appData() {
             } catch (e) {
                 console.error(e);
                 alert("Error de conexión al intentar iniciar la tarea.");
+            }
+        },
+        async enviarCobranzaIndividual(familia) {
+            // Validaciones rápidas en el navegador
+            if (familia.deuda <= 0) {
+                return alert("⚠️ Esta familia no tiene deuda pendiente ($0).");
+            }
+            if (!familia.email || familia.email.trim() === '') {
+                return alert("⚠️ Esta familia no tiene un correo registrado. Edita su perfil primero para agregar uno.");
+            }
+
+            // Confirmación de seguridad
+            if (!confirm(`¿Estás seguro de reenviar el correo de cobranza a la Familia ${familia.nombre}?\n\nSe enviará a: ${familia.email}\nMonto: $${familia.deuda.toLocaleString('es-CL')}`)) return;
+
+            try {
+                // Llamamos a la nueva ruta que creamos en el Paso 1
+                const r = await this.fetchAuth(`/api/familias/${familia.id}/notificar-deuda`, { 
+                    method: 'POST' 
+                });
+                
+                const d = await r.json();
+                
+                if (r.ok) {
+                    alert("✅ " + d.message);
+                } else {
+                    alert("❌ Error: " + d.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error de conexión al intentar enviar el correo individual.");
             }
         },
         async resetearDeudasMasivo() {

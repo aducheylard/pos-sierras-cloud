@@ -264,6 +264,38 @@ app.post('/api/familias/reset-deudas', requireAuth, requireAdmin, (req, res) => 
     }
 });
 
+// NUEVA RUTA: Enviar cobranza a una familia específica (Manual)
+app.post('/api/familias/:id/notificar-deuda', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // 1. Buscamos a la familia específica en la base de datos
+        const familia = db.prepare("SELECT * FROM familias WHERE id = ?").get(id);
+
+        // 2. Validaciones de seguridad
+        if (!familia) {
+            return res.status(404).json({ error: "Familia no encontrada." });
+        }
+        if (!familia.email) {
+            return res.status(400).json({ error: "Esta familia no tiene un correo registrado." });
+        }
+        if (familia.deuda <= 0) {
+            return res.status(400).json({ error: "Esta familia no tiene deuda pendiente para cobrar." });
+        }
+
+        // 3. Generamos el HTML y enviamos
+        const html = generarHtmlCobranza(familia.nombre, familia.id, familia.deuda);
+        
+        // NOTA: Revisa que el asunto sea el que deseas. Aquí dejé el estándar.
+        await enviarEmail(familia.email, `Aviso de Saldo Pendiente - Sierras`, html);
+
+        res.json({ success: true, message: `Correo de cobranza reenviado exitosamente a ${familia.email}.` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Error interno al enviar el correo." });
+    }
+});
+
 // --- VENTAS ---
 app.get('/api/ventas', requireAuth, (req, res) => {
     // 1. Identificamos quién hace la petición
