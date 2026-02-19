@@ -123,7 +123,12 @@
 
     <div x-show="token" style="display: none;">
         <div class="overlay" :class="{ 'active': mobileMenuOpen }" @click="mobileMenuOpen = false"></div>
-        <div class="mobile-header d-lg-none"><button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen"><i class="bi bi-list"></i></button><h5 class="m-0 fw-bold">🏔️ Sierras de Bellavista</h5></div>
+        <div class="mobile-header d-lg-none">
+            <button class="btn text-white fs-4 me-3" @click="mobileMenuOpen = !mobileMenuOpen">
+                <i class="bi bi-list"></i>
+            </button>
+            <h5 class="m-0 fw-bold">🏔️ Sierras de Bellavista</h5>
+        </div>
 
         <div class="sidebar d-flex flex-column" :class="{ 'collapsed': sidebarCollapsed, 'active': mobileMenuOpen }">
             
@@ -164,8 +169,9 @@
             </ul>
 
             <div class="mt-auto p-3 border-top border-secondary pb-5 mb-5">
-                <button class="btn btn-outline-light w-100 btn-sm" @click="logout()">
-                    <i class="bi bi-box-arrow-left"></i> <span class="nav-text">Salir</span>
+                <button class="btn btn-outline-light w-100 btn-sm" @click="logout()" title="Cerrar sesión">
+                    <i class="bi bi-box-arrow-left"></i>
+                    <span class="nav-text">Salir</span>
                 </button>
             </div>
         </div>
